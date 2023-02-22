@@ -1,11 +1,13 @@
 # Learning 
 
 # Libraries
+import time
 import torch.nn as nn
 import numpy as np
 import torch
 import torch_geometric
 from training.loss import *
+
 
 def testing(model, loader, alpha=0, normalization=None):
     '''
@@ -22,16 +24,19 @@ def testing(model, loader, alpha=0, normalization=None):
     alpha: float
         smoothness parameter (see loss.py for more info)
     normalization: dict
-        contains the information to scale the pressures (e.g., graph_norm = {pressure:pressure_max})    
+        contains the information to scale the pressures (e.g., graph_norm = {pressure:pressure_max})
     '''
     model.eval()
     losses = []
     pred = []
     real = []
-    
+
     # retrieve model device (to correctly load data if GPU)
     device = next(model.parameters()).device
-        
+
+    # start measuring time
+    start_time = time.time()
+
     with torch.no_grad():
         for batch in loader:
             # if loop is needed to separate pytorch and pyg dataloaders
@@ -39,37 +44,36 @@ def testing(model, loader, alpha=0, normalization=None):
                 # Load data to device
                 real.append(batch.y)
                 batch = batch.to(device)
-                
-                # GNN model prediction
-                out = model(batch)                
-                pred.append(out.cpu())
 
+                # GNN model prediction
+                out = model(batch)
+                pred.append(out.cpu())
 
                 # loss function = MSE if alpha=0
                 loss = smooth_loss(out, batch, alpha=alpha)
-                
-                
+
+
             elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
                 # Load data to device
-                x, y = batch[0], batch[1]            
+                x, y = batch[0], batch[1]
                 real.append(y)
-                x = x.to(device)
-                y = y.to(device)
-                
+                x = x.to(device).double()
+                y = y.to(device).double()
+
                 # ANN model prediction
-                out = model(x)
+                out = model.double()(x)
                 pred.append(out.cpu())
 
                 # MSE loss function
                 loss = nn.MSELoss()(out, y)
-                
+
             # Normalization to have more representative loss values
             if normalization is not None:
                 loss *= normalization['pressure']
-                
+
             losses.append(loss.cpu().detach())
-        
-        preds = np.concatenate(pred).reshape(-1,1)
-        reals = np.concatenate(real).reshape(-1,1)
-    
-    return np.array(losses).mean(), preds, reals
+
+        preds = np.concatenate(pred).reshape(-1, 1)
+        reals = np.concatenate(real).reshape(-1, 1)
+    elapsed_time = time.time() - start_time
+    return np.array(losses).mean(), preds, reals, elapsed_time

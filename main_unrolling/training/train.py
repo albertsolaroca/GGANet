@@ -11,7 +11,61 @@ import torch.optim as optim
 from training.loss import *
 from training.test import testing
 from utils.visualization import *
+from tqdm import tqdm
 
+
+class EarlyStopping:
+    """Early stops the training if validation loss doesn't improve after a given patience."""
+
+    def __init__(self, patience=10, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
+        """
+        Args:
+            patience (int): How long to wait after last time validation loss improved.
+                            Default: 10
+            verbose (bool): If True, prints a message for each validation loss improvement.
+                            Default: False
+            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
+                            Default: 0
+            path (str): Path for the checkpoint to be saved to.
+                            Default: 'checkpoint.pt'
+            trace_func (function): trace print function.
+                            Default: print
+        """
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+        self.path = path
+        self.trace_func = trace_func
+
+    def __call__(self, val_loss, model):
+
+        score = -val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            if self.verbose:
+                self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model):
+        '''Saves model when validation loss decrease.'''
+        if self.verbose:
+            self.trace_func(
+                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), self.path)
+        self.val_loss_min = val_loss
 
 
 def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=None):
@@ -28,57 +82,57 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
     alpha: float
         smoothness parameter (see loss.py for more info)
     normalization: dict
-        contains the information to scale the pressures (e.g., graph_norm = {pressure:pressure_max})    
+        contains the information to scale the pressures (e.g., graph_norm = {pressure:pressure_max})
     '''
     model.train()
     losses = []
-    
+
     # retrieve model device (to correctly load data if GPU)
     if device is None:
         device = next(model.parameters()).device
-        
+
     for batch in loader:
 
         if isinstance(loader, torch_geometric.loader.dataloader.DataLoader):
             # Load data to device
             batch = batch.to(device)
-            
+
             # Model prediction
             preds = model(batch)
-			
+
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
             loss = nn.MSELoss()(preds, batch.y)
-            
+
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
-            x, y = batch[0], batch[1]            
-            x = x.to(device)
-            y = y.to(device)
+            x, y = batch[0], batch[1]
+            x = x.to(device).double()
+            y = y.to(device).double()
 
             # Model prediction
-            preds = model(x)
-            
+            preds = model.double()(x)
+
             # MSE loss function
             loss = nn.MSELoss()(preds, y)
-        
+
         # Normalization to have more representative loss values
         if normalization is not None:
             loss *= normalization['pressure']
-            
+
         losses.append(loss.cpu().detach())
-        
+
         # Backpropagate and update weights
         loss.backward()
         optimizer.step()
-        optimizer.zero_grad(set_to_none=True)        
-        
+        optimizer.zero_grad(set_to_none=True)
+
     return np.array(losses).mean()
 
 
-def training(model, optimizer,train_loader, val_loader,
+def training(model, optimizer, train_loader, val_loader,
              n_epochs, patience=10, report_freq=10, alpha=0, lr_rate=10, lr_epoch=50, normalization=None,
-             device=None):
+             device=None, path=''):
     '''
     Training function which returns the training and validation losses over the epochs
     Learning rate scheduler and early stopping routines working correctly
@@ -100,27 +154,38 @@ def training(model, optimizer,train_loader, val_loader,
     normalization: dict
         contains the information to scale the pressures (e.g., graph_norm = {pressure:pressure_max})
     '''
-    #create vectors for the training and validation loss
+    # create vectors for the training and validation loss
     train_losses = []
     val_losses = []
-    
-    #initialize early stopping variable
-    early_stop = 0
-    
-    #start measuring time
+
+    # start measuring time
     start_time = time.time()
 
+    early_stopping = EarlyStopping(patience=patience, delta=1e-3, path=path + 'checkpoint.pt')
 
     # torch.autograd.set_detect_anomaly(True)
-    for epoch in range(1, n_epochs+1):
+    for epoch in tqdm(range(1, n_epochs + 1)):
         # Model training
-        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization, device=device)
+        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization,
+                                 device=device)
 
         # Model validation
-        val_loss, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)
+        val_loss, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
+
+        # learning rate scheduler
+        if epoch % lr_epoch == 0:
+            learning_rate = optimizer.param_groups[0]['lr'] / lr_rate
+            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+            print("Learning rate is divided by ", lr_rate, "to:", learning_rate)
+
+        # Routine for early stopping
+        early_stopping(val_loss, model)
+        if early_stopping.early_stop:
+            print("Early Stopping")
+            break
 
         # Print R^2
         if report_freq == 0:
@@ -129,27 +194,12 @@ def training(model, optimizer,train_loader, val_loader,
             train_R2 = plot_R2(model, train_loader, show=False)
             val_R2 = plot_R2(model, val_loader, show=False)
             # test_R2 = plot_R2(model, test_loader, show=False)
-            print("epoch:",epoch, "\t loss:", np.round(train_losses[-1],2),
-                                  "m\t train R2:", np.round(train_R2,4),
-                                "\t val R2:", np.round(val_R2,4)
+            print("epoch:", epoch, "\t loss:", np.round(train_losses[-1], 2),
+                  "m\t train R2:", np.round(train_R2, 4),
+                  "\t val R2:", np.round(val_R2, 4)
                   )
 
-        # learning rate scheduler
-        if epoch%lr_epoch==0:
-            learning_rate = optimizer.param_groups[0]['lr']/lr_rate
-            optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-            print("Learning rate is divided by ", lr_rate, "to:", learning_rate)
-
-        # Routine for early stopping
-        if epoch>2 and val_losses[-1]>val_losses[-2]:
-            early_stop += 1
-            if early_stop == patience:
-                print("Early stopping! Epoch:", epoch)
-                break
-        else:
-            early_stop = 0
-
-
+    # model.load_state_dict(torch.load(path+'checkpoint.pt'))
     elapsed_time = time.time() - start_time
-    
-    return model, train_losses, val_losses, elapsed_time
+
+    return model, train_losses, val_losses, elapsed_time, epoch
