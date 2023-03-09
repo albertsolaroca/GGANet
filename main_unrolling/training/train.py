@@ -170,7 +170,7 @@ def training(model, optimizer, train_loader, val_loader,
                                  device=device)
 
         # Model validation
-        val_loss, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)
+        val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)

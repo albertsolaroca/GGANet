@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['FOS','MOD','PES', 'BAK', 'Jilin', 'RuralNetwork']
+networks: ['FOS'] #,'MOD','PES', 'BAK', 'Jilin', 'RuralNetwork']
 
 # number of training samples to use (if < than total)
 tra_num: 8000
@@ -23,8 +23,8 @@ tra_num: 8000
 # model architectures to train
 algorithms:
 #    - MLP
-#    - UnrollingModel
-    - UnrollingFinal
+    - UnrollingModel
+#    - UnrollingFinal
 
 # # hyper params for each model
 hyperParams:
@@ -38,20 +38,20 @@ hyperParams:
 #             - 6
 #             - 8
 #             - 10
-     UnrollingFinal:
-         num_blocks:
-             - 2
-             - 3
-             - 4
-             - 5
-             - 6
-             - 7
-             - 8
-#     UnrollingModel:
+#     UnrollingFinal:
 #         num_blocks:
 #             - 2
 #             - 3
 #             - 4
+#             - 5
+#             - 6
+#             - 7
+#             - 8
+     UnrollingModel:
+         num_blocks:
+             - 2
+             - 3
+             - 4
 #             - 5
 #             - 6
 #             - 7

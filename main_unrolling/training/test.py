@@ -52,7 +52,6 @@ def testing(model, loader, alpha=0, normalization=None):
                 # loss function = MSE if alpha=0
                 loss = smooth_loss(out, batch, alpha=alpha)
 
-
             elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
                 # Load data to device
                 x, y = batch[0], batch[1]
@@ -76,4 +75,4 @@ def testing(model, loader, alpha=0, normalization=None):
         preds = np.concatenate(pred).reshape(-1, 1)
         reals = np.concatenate(real).reshape(-1, 1)
     elapsed_time = time.time() - start_time
-    return np.array(losses).mean(), preds, reals, elapsed_time
+    return np.array(losses).mean(), np.array(losses).max(),np.array(losses).min(), preds, reals, elapsed_time
