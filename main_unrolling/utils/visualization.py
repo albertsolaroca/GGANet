@@ -61,14 +61,13 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
     normalization: dict
         used to normalize pressures by the maximum
     '''    
-    _,_,_, pred, real, time = testing(model, loader, normalization=normalization)
+    _,_,_, pred, real, time = testing(model, loader,normalization=normalization)
 
     
     if show:
         if normalization is not None:
-            pressure_max = normalization['pressure'].item()
-            pred = pred * pressure_max
-            real = real * pressure_max
+            pred = normalization.inverse_transform_array(pred,'pressure')
+            real = normalization.inverse_transform_array(real,'pressure')
 
         MIN = min(pred.min(), real.min())
         MAX = max(pred.max(), real.max())
