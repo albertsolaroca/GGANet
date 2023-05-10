@@ -1,7 +1,7 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['FOS'],
+dataset_names : ['temp5'],
 # dataset_names : ['KL'],
 # number of trials
 n_trials : [100],
@@ -23,5 +23,6 @@ BLA : [10, 20, 50, 1, 1],
 KL  : [10, 20, 20, 4, 1],
 ZJ  : [10, 20, 50, 3, 0.02],
 Jilin : [10, 20, 50, 3, 0.02],
-RuralNetwork : [20, 50, 50, 4, 1]
+RuralNetwork : [20, 50, 50, 4, 1],
+temp5 : [10, 20, 50, 1, 1]
 }

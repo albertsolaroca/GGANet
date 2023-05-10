@@ -118,7 +118,9 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
         # Normalization to have more representative loss values
         if normalization is not None:
-            loss *= normalization['pressure']
+            out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'pressure')
+            y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure')
+            loss = nn.MSELoss()(out, y)
 
         losses.append(loss.cpu().detach())
 

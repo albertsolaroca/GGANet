@@ -6,7 +6,8 @@ import torch.nn as nn
 import numpy as np
 import torch
 import torch_geometric
-from training.loss import *
+
+from main_unrolling.training.loss import *
 
 
 def testing(model, loader, alpha=0, normalization=None):
@@ -64,13 +65,13 @@ def testing(model, loader, alpha=0, normalization=None):
                 pred.append(out.cpu())
 
                 # MSE loss function
-                loss = nn.MSELoss()(out, y)
+                loss = torch.sqrt(nn.MSELoss()(out, y))
 
             # Normalization to have more representative loss values
             if normalization is not None:
                 out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'pressure')
                 y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure')
-                loss = nn.MSELoss()(out, y)
+                loss = torch.sqrt(nn.MSELoss()(out, y))
 
             losses.append(loss.cpu().detach())
 
