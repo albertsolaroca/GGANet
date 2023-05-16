@@ -1,16 +1,16 @@
 ; Filename: C:\Code\data_generation/networks//temp5.inp
 ; WNTR: 0.3.1
-; Created: 2023-04-10 18:18:28
+; Created: 2023-05-16 12:16:28
 [TITLE]
 foss_poly_1 -- Bragalli, D'Ambrosio, Lee, Lodi, Toth (2008)
 
 [JUNCTIONS]
 ;ID                      Elevation       Demand Pattern                 
- 1                              65.15             1.2                            ;
- 2                               64.4             1.6                            ;
- 3                              63.35             4.2                            ;
- 4                               62.5             0.5                            ;
- 5                              61.24             7.4                            ;
+ 1                              65.15             2.8                            ;
+ 2                               64.4             5.4                            ;
+ 3                              63.35             3.9                            ;
+ 4                               62.5             7.7                            ;
+ 5                              61.24             2.9                            ;
 
 [RESERVOIRS]
 ;ID                                   Head                  Pattern
@@ -21,13 +21,13 @@ foss_poly_1 -- Bragalli, D'Ambrosio, Lee, Lodi, Toth (2008)
 
 [PIPES]
 ;ID                   Node1                Node2                              Length             Diameter            Roughness           Minor Loss               Status
- 3                    2                    3                             119.74             250             132               0                 Open   ;
- 4                    3                    4                             312.72             475             145               0                 Open   ;
- 58                   37                   1                                  1             550             127               0                 Open   ;
- 1                    4                    5                               1000             200             114               0                 Open   ;
- 2                    5                    1                               1000             125              90               0                 Open   ;
- 5                    2                    1                               1000             150              85               0                 Open   ;
- 6                    3                    5                               1000             225              95               0                 Open   ;
+ 3                    2                    3                             119.74             425             126               0                 Open   ;
+ 4                    3                    4                             312.72             450             120               0                 Open   ;
+ 58                   37                   1                                  1             450             133               0                 Open   ;
+ 1                    4                    5                               1000             250              95               0                 Open   ;
+ 2                    5                    1                               1000             225              98               0                 Open   ;
+ 5                    2                    1                               1000             175              87               0                 Open   ;
+ 6                    3                    5                               1000             100              95               0                 Open   ;
 
 [PUMPS]
 ;ID                   Node1                Node2                Properties          
