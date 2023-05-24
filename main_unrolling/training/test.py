@@ -51,7 +51,7 @@ def testing(model, loader, alpha=0, normalization=None):
                 pred.append(out.cpu())
 
                 # loss function = MSE if alpha=0
-                loss = smooth_loss(out, batch, alpha=alpha)
+                loss = smooth_loss(out, batch, device, alpha=alpha)
 
             elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
                 # Load data to device

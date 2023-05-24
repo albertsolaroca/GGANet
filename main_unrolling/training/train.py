@@ -13,6 +13,8 @@ from training.test import testing
 from utils.visualization import *
 from tqdm import tqdm
 
+from main_unrolling.utils.visualization import plot_R2
+
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -102,7 +104,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
-            loss = nn.MSELoss()(preds, batch.y)
+            loss = nn.MSELoss()(preds, batch.y.to(device))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
@@ -125,9 +127,9 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
         losses.append(loss.cpu().detach())
 
         # Backpropagate and update weights
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad(set_to_none=True)
+        #loss.backward()
+        #optimizer.step()
+        #optimizer.zero_grad(set_to_none=True)
 
     return np.array(losses).mean()
 
@@ -168,8 +170,7 @@ def training(model, optimizer, train_loader, val_loader,
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):
         # Model training
-        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization,
-                                 device=device)
+        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization,device=device)
 
         # Model validation
         val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)

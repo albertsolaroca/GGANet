@@ -7,8 +7,8 @@ from torch_geometric.utils import get_laplacian, to_dense_adj
 from torch_sparse import SparseTensor
 
 
-def smooth_loss(preds, batch, alpha=0):
-    loss = torch.mean((preds - batch.y)**2)
+def smooth_loss(preds, batch, device, alpha=0):
+    loss = torch.mean((preds - batch.y.to(device))**2)
 
     if alpha > 0:
         loss += alpha*smoothness(preds, batch)
