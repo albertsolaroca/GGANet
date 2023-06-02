@@ -35,7 +35,7 @@ def run_wntr_simulation(wn, headloss='H-W'):
     wn.options.hydraulic.viscosity = 1.0
     wn.options.hydraulic.specific_gravity = 1.0
     wn.options.hydraulic.demand_multiplier = 1.0
-    wn.options.hydraulic.demand_model = 'PDD'
+    wn.options.hydraulic.demand_model = 'DD'
     wn.options.hydraulic.minimum_pressure = 0
     wn.options.hydraulic.required_pressure = 1
     wn.options.hydraulic.pressure_exponent = 0.5
@@ -49,6 +49,7 @@ def run_wntr_simulation(wn, headloss='H-W'):
     wn.options.hydraulic.damplimit = 0.0
     wn.options.hydraulic.headerror = 0.0
     wn.options.hydraulic.flowchange = 0.0
+    wn.options.hydraulic.inpfile_units = "LPS"
     sim = wntr.sim.EpanetSimulator(wn)
     results = sim.run_sim(version=2.2)
 
@@ -317,8 +318,6 @@ def get_dataset_entry(network, d_attr, d_netw, path):
         res_dict[feat] = get_attribute_all_nodes(wn, feat)
     # get output == pressure, after running simulation
     sim = run_wntr_simulation(wn, headloss='H-W')
-
-    plt.show()
     res_dict['pressure'] = sim.node['pressure'].squeeze()
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
@@ -398,14 +397,14 @@ def from_wntr_to_nx(wn):
     uG_WDS = G_WDS.to_undirected()  # undirected
     sG_WDS = nx.Graph(uG_WDS)  # Simple graph
 
-    i = 0
-    for (u, v, wt) in sG_WDS.edges.data():
-        assert isinstance(wn_links[i][1], wntr.network.elements.Pipe), "The link is not a pipe"
-        sG_WDS[u][v]['name'] = wn_links[i][1].name
-        sG_WDS[u][v]['diameter'] = wn_links[i][1].diameter
-        sG_WDS[u][v]['length'] = wn_links[i][1].length
-        sG_WDS[u][v]['roughness'] = wn_links[i][1].roughness
-        i += 1
+    for (u,v,wt) in sG_WDS.edges.data():
+        for edge in wn.links():
+            if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (edge[1].start_node.name == v and edge[1].end_node.name == u):
+                assert isinstance(edge[1], wntr.network.elements.Pipe), "The link is not a pipe"
+                sG_WDS[u][v]['name'] = edge[1].name
+                sG_WDS[u][v]['diameter'] = edge[1].diameter
+                sG_WDS[u][v]['length'] = edge[1].length
+                sG_WDS[u][v]['roughness'] = edge[1].roughness
 
     i = 0
     for u in sG_WDS.nodes:
