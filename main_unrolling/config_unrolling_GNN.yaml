@@ -11,11 +11,11 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['temp5_100']
+networks: ['temp5', 'FOS']
 
 # number of training samples to use (if < than total)
 #tra_num: 8000
-tra_num: 1000
+tra_num: 8000
 # tra_num: 4096
 # tra_num: 6144
 
@@ -28,15 +28,23 @@ algorithms:
 hyperParams:
      UnrollingGNN:
         num_blocks:
+            - 4
+            - 5
+            - 6
+            - 7
+        K:
+            - 2
+            - 3
+            - 4
             - 5
 adamParams:
-    lr: 0.001
+    lr: 0.1
     weight_decay: 0
 
 
 trainParams:
-    num_epochs: 100
-    batch_size: 10
+    num_epochs: 500
+    batch_size: 256
 
 lossParams:
         alpha: 0

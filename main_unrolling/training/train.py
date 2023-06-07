@@ -104,7 +104,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
-            loss = nn.MSELoss()(preds, batch.y.to(device))
+            loss = nn.MSELoss()(preds, batch.y.double().view(-1,1).to(device))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
@@ -120,16 +120,16 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
         # Normalization to have more representative loss values
         if normalization is not None:
-            out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'pressure')
-            y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure')
+            out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'head')
+            y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'head')
             loss = nn.MSELoss()(out, y)
 
         losses.append(loss.cpu().detach())
 
         # Backpropagate and update weights
-        #loss.backward()
-        #optimizer.step()
-        #optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
 
     return np.array(losses).mean()
 
