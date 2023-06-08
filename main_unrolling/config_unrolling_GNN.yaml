@@ -22,11 +22,47 @@ tra_num: 8000
 
 # model architectures to train
 algorithms:
-    - UnrollingGNN
+    - MLP
+    - GNN
+    - Unrolling
+    - ModelBased
 
 # # hyper params for each model
 hyperParams:
-     UnrollingGNN:
+    MLP:
+        hid_channels:
+            - 16
+            - 32
+            - 64
+        num_layers:
+            - 2
+            - 4
+            - 6
+    GNN:
+        K:
+            - 2
+            - 3
+            - 4
+        hidden_dim:
+            - 16
+            - 32
+        n_gnn_layers:
+            - 4
+            - 5
+            - 6
+            - 7
+    Unrolling:
+        num_blocks:
+            - 4
+            - 5
+            - 6
+            - 7
+        K:
+            - 2
+            - 3
+            - 4
+            - 5
+    ModelBased:
         num_blocks:
             - 4
             - 5
@@ -38,7 +74,7 @@ hyperParams:
             - 4
             - 5
 adamParams:
-    lr: 0.1
+    lr: 1
     weight_decay: 0
 
 

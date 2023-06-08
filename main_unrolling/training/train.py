@@ -3,17 +3,13 @@
 # Libraries
 import time
 import torch.nn as nn
-import numpy as np
-import torch
 import torch_geometric
 import torch.optim as optim
-
-from training.loss import *
-from training.test import testing
-from utils.visualization import *
 from tqdm import tqdm
 
-from main_unrolling.utils.visualization import plot_R2
+from main_unrolling.training.loss import smooth_loss
+from main_unrolling.training.test import testing
+from main_unrolling.utils.visualization import *
 
 
 class EarlyStopping:
@@ -103,8 +99,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             preds = model(batch)
 
             # loss function = MSE if alpha=0
-            # loss = smooth_loss(preds, batch, alpha=alpha)
-            loss = nn.MSELoss()(preds, batch.y.double().view(-1,1).to(device))
+            loss = smooth_loss(preds, batch.y, alpha=alpha, device=device)
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
@@ -116,15 +111,15 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             preds = model.double()(x)
 
             # MSE loss function
-            loss = nn.MSELoss()(preds, y)
+            loss = smooth_loss(preds, y, alpha=alpha,device=device)
 
         # Normalization to have more representative loss values
         if normalization is not None:
-            out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'head')
-            y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'head')
-            loss = nn.MSELoss()(out, y)
+            out = normalization.inverse_transform_array(preds.detach().cpu().numpy(), 'pressure')
+            y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure')
+            loss = torch.sqrt(nn.MSELoss()(out, y))
 
-        losses.append(loss.cpu().detach())
+        losses.append(torch.sqrt(loss).cpu().detach())
 
         # Backpropagate and update weights
         loss.backward()

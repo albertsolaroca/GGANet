@@ -44,14 +44,14 @@ def testing(model, loader, alpha=0, normalization=None):
             if isinstance(loader, torch_geometric.loader.dataloader.DataLoader):
                 # Load data to device
                 real.append(batch.y)
-                batch = batch.to(device)
+                y = batch.y.to(device)
 
                 # GNN model prediction
                 out = model(batch)
                 pred.append(out.cpu())
 
                 # loss function = MSE if alpha=0
-                loss = smooth_loss(out, batch, device, alpha=alpha)
+                loss = smooth_loss(out, y, device, alpha=alpha)
 
             elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
                 # Load data to device
@@ -65,15 +65,15 @@ def testing(model, loader, alpha=0, normalization=None):
                 pred.append(out.cpu())
 
                 # MSE loss function
-                loss = torch.sqrt(nn.MSELoss()(out, y))
+                loss = smooth_loss(out, y, device, alpha=alpha)
 
             # Normalization to have more representative loss values
             if normalization is not None:
                 out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'pressure')
                 y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure')
-                loss = torch.sqrt(nn.MSELoss()(out, y))
+                loss = nn.MSELoss()(out, y)
 
-            losses.append(loss.cpu().detach())
+            losses.append(torch.sqrt(loss).cpu().detach())
 
         preds = np.concatenate(pred).reshape(-1, 1)
         reals = np.concatenate(real).reshape(-1, 1)
