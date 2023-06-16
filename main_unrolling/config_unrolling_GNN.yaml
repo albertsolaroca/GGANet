@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['temp5', 'FOS']
+networks: ['temp5']
 
 # number of training samples to use (if < than total)
 #tra_num: 8000
@@ -22,59 +22,27 @@ tra_num: 8000
 
 # model architectures to train
 algorithms:
-    - MLP
-    - GNN
-    - Unrolling
     - ModelBased
 
 # # hyper params for each model
 hyperParams:
-    MLP:
-        hid_channels:
-            - 16
-            - 32
-            - 64
-        num_layers:
-            - 2
-            - 4
-            - 6
-    GNN:
-        K:
-            - 2
-            - 3
-            - 4
-        hidden_dim:
-            - 16
-            - 32
-        n_gnn_layers:
-            - 4
-            - 5
-            - 6
-            - 7
-    Unrolling:
-        num_blocks:
-            - 4
-            - 5
-            - 6
-            - 7
-        K:
-            - 2
-            - 3
-            - 4
-            - 5
+
     ModelBased:
         num_blocks:
-            - 4
-            - 5
-            - 6
-            - 7
+            - 2
+            - 3
         K:
             - 2
             - 3
             - 4
             - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 10
 adamParams:
-    lr: 1
+    lr: 0.01
     weight_decay: 0
 
 

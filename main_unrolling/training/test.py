@@ -4,8 +4,6 @@
 import time
 import torch.nn as nn
 import numpy as np
-import torch
-import torch_geometric
 
 from main_unrolling.training.loss import *
 
@@ -48,7 +46,7 @@ def testing(model, loader, alpha=0, normalization=None):
 
                 # GNN model prediction
                 out = model(batch)
-                pred.append(out.cpu())
+                pred.append(out.detach().cpu().numpy())
 
                 # loss function = MSE if alpha=0
                 loss = smooth_loss(out, y, device, alpha=alpha)
@@ -62,16 +60,16 @@ def testing(model, loader, alpha=0, normalization=None):
 
                 # ANN model prediction
                 out = model.double()(x)
-                pred.append(out.cpu())
+                pred.append(out.detach().cpu().numpy())
 
                 # MSE loss function
                 loss = smooth_loss(out, y, device, alpha=alpha)
 
             # Normalization to have more representative loss values
             if normalization is not None:
-                out = normalization.inverse_transform_array(out.detach().cpu().numpy(), 'pressure')
-                y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure')
-                loss = nn.MSELoss()(out, y)
+                out = torch.from_numpy(normalization.inverse_transform_array(pred[-1], 'pressure').flatten())
+                y = torch.from_numpy(normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure').flatten())
+                loss = smooth_loss(out, y, device, alpha=alpha)
 
             losses.append(torch.sqrt(loss).cpu().detach())
 
