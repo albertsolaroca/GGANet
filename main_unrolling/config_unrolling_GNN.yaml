@@ -15,40 +15,34 @@ networks: ['temp5']
 
 # number of training samples to use (if < than total)
 #tra_num: 8000
-tra_num: 8000
+tra_num: 1
 # tra_num: 4096
 # tra_num: 6144
 
 
 # model architectures to train
 algorithms:
-    - ModelBased
+    - NeumannEPANET
 
 # # hyper params for each model
 hyperParams:
-
-    ModelBased:
+    NeumannEPANET:
         num_blocks:
             - 2
             - 3
         K:
-            - 2
-            - 3
-            - 4
-            - 5
-            - 6
-            - 7
-            - 8
-            - 9
             - 10
+            - 20
+            - 50
+            - 100
 adamParams:
-    lr: 0.01
+    lr: 0.05
     weight_decay: 0
 
 
 trainParams:
-    num_epochs: 500
-    batch_size: 256
+    num_epochs: 1000
+    batch_size: 512
 
 lossParams:
         alpha: 0
