@@ -1,7 +1,7 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['temp5','FOS','MOD','PES'],
+dataset_names : ['FOS'],
 # dataset_names : ['KL'],
 # number of trials
 n_trials : [8000],
