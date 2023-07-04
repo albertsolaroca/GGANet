@@ -67,8 +67,8 @@ def testing(model, loader, alpha=0, normalization=None):
 
             # Normalization to have more representative loss values
             if normalization is not None:
-                out = torch.from_numpy(normalization.inverse_transform_array(pred[-1], 'pressure').flatten())
-                y = torch.from_numpy(normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure').flatten())
+                out = normalization.inverse_transform_array(pred[-1], 'pressure').flatten()
+                y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure').flatten()
                 loss = smooth_loss(out, y, device, alpha=alpha)
 
             losses.append(torch.sqrt(loss).cpu().detach())

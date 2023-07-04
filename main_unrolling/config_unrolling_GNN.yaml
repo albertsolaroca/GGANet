@@ -15,7 +15,7 @@ networks: ['temp5']
 
 # number of training samples to use (if < than total)
 #tra_num: 8000
-tra_num: 1
+tra_num: 1000
 # tra_num: 4096
 # tra_num: 6144
 
@@ -42,7 +42,7 @@ adamParams:
 
 trainParams:
     num_epochs: 1000
-    batch_size: 512
+    batch_size: 1
 
 lossParams:
         alpha: 0
