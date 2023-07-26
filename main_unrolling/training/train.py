@@ -3,14 +3,15 @@
 # Libraries
 import time
 import torch.nn as nn
+import numpy as np
+import torch
 import torch_geometric
 import torch.optim as optim
 from tqdm import tqdm
 
-from main_unrolling.training.loss import smooth_loss
+from main_unrolling.training.loss import *
 from main_unrolling.training.test import testing
 from main_unrolling.utils.visualization import *
-
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -65,7 +66,6 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
-
 def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=None):
     '''
     Function that trains a model for one iteration
@@ -99,7 +99,8 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             preds = model(batch)
 
             # loss function = MSE if alpha=0
-            loss = smooth_loss(preds, batch.y, alpha=alpha, device=device)
+            # loss = smooth_loss(preds, batch, alpha=alpha)
+            loss = nn.MSELoss()(preds, batch.y.view(-1,1))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
@@ -111,7 +112,11 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             preds = model.double()(x)
 
             # MSE loss function
-            loss = smooth_loss(preds, y, alpha=alpha,device=device)
+            loss = nn.MSELoss()(preds, y)
+
+        # Normalization to have more representative loss values
+        if normalization is not None:
+            loss *= normalization['pressure']
 
         losses.append(loss.cpu().detach())
 
@@ -125,7 +130,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
 def training(model, optimizer, train_loader, val_loader,
              n_epochs, patience=10, report_freq=10, alpha=0, lr_rate=10, lr_epoch=50, normalization=None,
-             device=None, path=''):
+             device=None, path = None):
     '''
     Training function which returns the training and validation losses over the epochs
     Learning rate scheduler and early stopping routines working correctly
@@ -151,18 +156,21 @@ def training(model, optimizer, train_loader, val_loader,
     train_losses = []
     val_losses = []
 
+    # initialize early stopping variable
+    early_stop = 0
+
     # start measuring time
     start_time = time.time()
-
     early_stopping = EarlyStopping(patience=patience, delta=1e-3, path=path + 'checkpoint.pt')
 
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):
         # Model training
-        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha,device=device)
+        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization,
+                                 device=device)
 
         # Model validation
-        val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha)
+        val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
@@ -173,7 +181,7 @@ def training(model, optimizer, train_loader, val_loader,
             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
             print("Learning rate is divided by ", lr_rate, "to:", learning_rate)
 
-        # Routine for early stopping
+            # Routine for early stopping
         early_stopping(val_loss, model)
         if early_stopping.early_stop:
             print("Early Stopping")
@@ -191,7 +199,6 @@ def training(model, optimizer, train_loader, val_loader,
                   "\t val R2:", np.round(val_R2, 4)
                   )
 
-    # model.load_state_dict(torch.load(path+'checkpoint.pt'))
     elapsed_time = time.time() - start_time
 
-    return model, train_losses, val_losses, elapsed_time, epoch
+    return model, train_losses, val_losses, elapsed_time

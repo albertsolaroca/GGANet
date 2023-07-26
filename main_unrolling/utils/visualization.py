@@ -7,7 +7,7 @@ import networkx as nx
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
-from training.test import testing
+from main_unrolling.training.test import testing
 
 
 # Plot the distribution of the resiliences
@@ -60,14 +60,13 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
         if given, a figure is saved with that name
     normalization: dict
         used to normalize pressures by the maximum
-    '''    
-    _,_,_, pred, real, time = testing(model, loader,normalization=normalization)
+    '''
+    _, _, _, pred, real, time = testing(model, loader, normalization=normalization)
 
-    
     if show:
         if normalization is not None:
-            pred = normalization.inverse_transform_array(pred,'pressure')
-            real = normalization.inverse_transform_array(real,'pressure')
+            pred = normalization.inverse_transform_array(pred, 'pressure')
+            real = normalization.inverse_transform_array(real, 'pressure')
 
         MIN = min(pred.min(), real.min())
         MAX = max(pred.max(), real.max())
@@ -85,7 +84,6 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
             plt.close()
 
     return r2_score(real, pred)
-
 
 def plot_pressure(database, normalization=None):
     '''
