@@ -90,7 +90,7 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
 def plot_pressure(database, normalization=None):
     '''
     Plot pressure distribution over entire dataset
-    The model takes wither the whole database or its division in training, validation, and testing
+    The model takes either the whole database or its division in training, validation, and testing
     ------
     database: list
     normalization: dict

@@ -8,7 +8,7 @@ from torch_sparse import SparseTensor
 
 
 def smooth_loss(preds, batch, device, alpha=0):
-    loss = torch.mean((preds.to(device) - batch.to(device))**2)
+    loss = torch.mean((preds - batch)**2)
 
     if alpha > 0:
         loss += alpha*smoothness(preds, batch)

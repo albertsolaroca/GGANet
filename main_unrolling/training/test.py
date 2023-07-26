@@ -45,7 +45,7 @@ def testing(model, loader, alpha=0, normalization=None):
                 y = batch.y.to(device)
 
                 # GNN model prediction
-                out = model(batch)
+                out = model(batch.to(device))
                 pred.append(out.detach().cpu().numpy())
 
                 # loss function = MSE if alpha=0
@@ -71,7 +71,7 @@ def testing(model, loader, alpha=0, normalization=None):
                 y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure').flatten()
                 loss = smooth_loss(out, y, device, alpha=alpha)
 
-            losses.append(torch.sqrt(loss).cpu().detach())
+            losses.append(loss.cpu().detach())
 
         preds = np.concatenate(pred).reshape(-1, 1)
         reals = np.concatenate(real).reshape(-1, 1)

@@ -113,7 +113,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             # MSE loss function
             loss = smooth_loss(preds, y, alpha=alpha,device=device)
 
-        losses.append(torch.sqrt(loss).cpu().detach())
+        losses.append(loss.cpu().detach())
 
         # Backpropagate and update weights
         loss.backward()
@@ -159,10 +159,10 @@ def training(model, optimizer, train_loader, val_loader,
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):
         # Model training
-        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization,device=device)
+        train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha,device=device)
 
         # Model validation
-        val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)
+        val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha)
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)

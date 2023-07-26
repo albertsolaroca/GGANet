@@ -35,7 +35,7 @@ def run_wntr_simulation(wn, headloss='H-W'):
     wn.options.hydraulic.viscosity = 1.0
     wn.options.hydraulic.specific_gravity = 1.0
     wn.options.hydraulic.demand_multiplier = 1.0
-    wn.options.hydraulic.demand_model = 'DD'
+    wn.options.hydraulic.demand_model = 'PDD'
     wn.options.hydraulic.minimum_pressure = 0
     wn.options.hydraulic.required_pressure = 1
     wn.options.hydraulic.pressure_exponent = 0.5
@@ -49,7 +49,6 @@ def run_wntr_simulation(wn, headloss='H-W'):
     wn.options.hydraulic.damplimit = 0.0
     wn.options.hydraulic.headerror = 0.0
     wn.options.hydraulic.flowchange = 0.0
-    wn.options.hydraulic.inpfile_units = "LPS"
     sim = wntr.sim.EpanetSimulator(wn)
     results = sim.run_sim(version=2.2)
 
@@ -112,7 +111,7 @@ def get_attribute_from_networks(attr_str, wn_path, wn_list, plot=True, n_cols=5)
     attr_str: str
         name of the selected attribute e.g., 'diameter', 'length', 'base_demand', 'roughness'
     wn_path: str
-        path to the network folder location 
+        path to the network folder location
     wn_list: list
         names of the networks considered
     plot: bool
@@ -208,7 +207,7 @@ def alter_water_network(wn, d_attr, d_netw):
     '''
 	This function randomly modifies nodes and edges attributes in the water network according to the distributions in d_attr.
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
-	No changes are made to a particular attribute if it is not in the keys of d_attr.  
+	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
     for attr in d_attr.keys():
         if attr in ['base_demand']:
@@ -388,7 +387,7 @@ def plot_dataset_attribute_distribution(dataset, attribute, figsize=(20, 5), bin
 
 def from_wntr_to_nx(wn):
     '''
-	This function converts a WNTR object to networkx 
+	This function converts a WNTR object to networkx
 	'''
     wn_links = list(wn.links())
     wn_nodes = list(wn.nodes())
@@ -397,14 +396,14 @@ def from_wntr_to_nx(wn):
     uG_WDS = G_WDS.to_undirected()  # undirected
     sG_WDS = nx.Graph(uG_WDS)  # Simple graph
 
-    for (u,v,wt) in sG_WDS.edges.data():
-        for edge in wn.links():
-            if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (edge[1].start_node.name == v and edge[1].end_node.name == u):
-                assert isinstance(edge[1], wntr.network.elements.Pipe), "The link is not a pipe"
-                sG_WDS[u][v]['name'] = edge[1].name
-                sG_WDS[u][v]['diameter'] = edge[1].diameter
-                sG_WDS[u][v]['length'] = edge[1].length
-                sG_WDS[u][v]['roughness'] = edge[1].roughness
+    i = 0
+    for (u, v, wt) in sG_WDS.edges.data():
+        assert isinstance(wn_links[i][1], wntr.network.elements.Pipe), "The link is not a pipe"
+        sG_WDS[u][v]['name'] = wn_links[i][1].name
+        sG_WDS[u][v]['diameter'] = wn_links[i][1].diameter
+        sG_WDS[u][v]['length'] = wn_links[i][1].length
+        sG_WDS[u][v]['roughness'] = wn_links[i][1].roughness
+        i += 1
 
     i = 0
     for u in sG_WDS.nodes:
