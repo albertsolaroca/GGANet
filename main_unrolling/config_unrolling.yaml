@@ -42,14 +42,6 @@ hyperParams:
              - 6
              - 7
              - 8
-         K:
-             -1
-             -2
-             -3
-         dropout_rate:
-             -0
-             -0.1
-             -0.25
 
 adamParams:
     lr: 0.001
