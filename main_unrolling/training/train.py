@@ -96,11 +96,11 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             batch = batch.to(device)
 
             # Model prediction
-            preds = model(batch)
+            preds = model.double()(batch)
 
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
-            loss = nn.MSELoss()(preds, batch.y.view(-1,1))
+            loss = nn.MSELoss()(preds, batch.y.to(device).double().view(-1,1))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device

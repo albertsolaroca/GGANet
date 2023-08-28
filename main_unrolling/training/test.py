@@ -45,11 +45,11 @@ def testing(model, loader, alpha=0, normalization=None):
                 y = batch.y.to(device)
 
                 # GNN model prediction
-                out = model(batch)
+                out = model.double()(batch)
                 pred.append(out.detach().cpu().numpy())
 
                 # loss function = MSE if alpha=0
-                loss = nn.MSELoss()(out, batch.y.view(-1,1))
+                loss = nn.MSELoss()(out, y.view(-1,1))
 
             elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
                 # Load data to device

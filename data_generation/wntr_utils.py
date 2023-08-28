@@ -12,6 +12,7 @@ import torch
 from torch_geometric.utils import convert
 import os
 from pathlib import Path
+import time
 
 
 def load_water_network(inp_file):
@@ -516,12 +517,20 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
 
     if isinstance(networks, list):
         for network in networks:
+            start_time = time.time()
             all_data += create_dataset(network, net_path, n_trials, d_attr, d_netw[network], max_fails=max_fails,
                                        show=show)
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"Execution time: {execution_time:.6f} seconds\n")
 
     elif isinstance(networks, str):
+        start_time = time.time()
         all_data += create_dataset(networks, net_path, n_trials, d_attr, d_netw[networks], max_fails=max_fails,
                                    show=show)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Execution time: {execution_time:.6f} seconds\n")
 
     # Create PyTorch Geometric dataset
     all_pyg_data = convert_to_pyg(all_data)
