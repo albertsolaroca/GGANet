@@ -5,3 +5,7 @@
 *.wandb
 *.pyc
 *.csv
+*.png
+*.pt
+*.ipynb
+*.json
