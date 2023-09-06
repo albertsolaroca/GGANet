@@ -2,9 +2,10 @@
 {
 # networks names
 dataset_names : ['FOS'],
+
 # dataset_names : ['KL'],
 # number of trials
-n_trials : [8000],
+n_trials : [1000],
 
 # min, max, step for diameters range
 diameter_range : [0, 1.5, 0.025],

@@ -12,6 +12,7 @@ import torch
 from torch_geometric.utils import convert
 import os
 from pathlib import Path
+import time
 
 
 def load_water_network(inp_file):
@@ -112,7 +113,7 @@ def get_attribute_from_networks(attr_str, wn_path, wn_list, plot=True, n_cols=5)
     attr_str: str
         name of the selected attribute e.g., 'diameter', 'length', 'base_demand', 'roughness'
     wn_path: str
-        path to the network folder location 
+        path to the network folder location
     wn_list: list
         names of the networks considered
     plot: bool
@@ -208,7 +209,7 @@ def alter_water_network(wn, d_attr, d_netw):
     '''
 	This function randomly modifies nodes and edges attributes in the water network according to the distributions in d_attr.
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
-	No changes are made to a particular attribute if it is not in the keys of d_attr.  
+	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
     for attr in d_attr.keys():
         if attr in ['base_demand']:
@@ -388,7 +389,7 @@ def plot_dataset_attribute_distribution(dataset, attribute, figsize=(20, 5), bin
 
 def from_wntr_to_nx(wn):
     '''
-	This function converts a WNTR object to networkx 
+	This function converts a WNTR object to networkx
 	'''
     wn_links = list(wn.links())
     wn_nodes = list(wn.nodes())
@@ -516,12 +517,20 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
 
     if isinstance(networks, list):
         for network in networks:
+            start_time = time.time()
             all_data += create_dataset(network, net_path, n_trials, d_attr, d_netw[network], max_fails=max_fails,
                                        show=show)
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"Execution time: {execution_time:.6f} seconds\n")
 
     elif isinstance(networks, str):
+        start_time = time.time()
         all_data += create_dataset(networks, net_path, n_trials, d_attr, d_netw[networks], max_fails=max_fails,
                                    show=show)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Execution time: {execution_time:.6f} seconds\n")
 
     # Create PyTorch Geometric dataset
     all_pyg_data = convert_to_pyg(all_data)

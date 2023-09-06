@@ -47,11 +47,11 @@ class Dashboard:
         trace = f.data[0]
 
         f.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
-        f.update_layout(width=1600, height=800, title="Distribution of real Head at minute 0")
+        f.update_layout(width=1600, height=800, title="Distribution of real Head")
         f.update_xaxes(showticklabels=False, col=1)
         f.update_yaxes(showticklabels=False, col=1)
         f.update_yaxes(title_text="Head [masl]", row=1, col=2)
-        f.update_xaxes(title_text="Time [min]", row=1, col=2)
+        f.update_xaxes(title_text="Node", row=1, col=2)
 
         # create our callback function
         def update_point(trace, points, selector):
