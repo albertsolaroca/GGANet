@@ -16,6 +16,7 @@ for i, network in enumerate(ordered_networks):
         try:
             create_and_save(network, path, n_trials=trials, d_attr=d_attr, d_netw=d_netw, out_path=out_path,
                             max_fails=10 * trials, show=True)
-        except:
+        except Exception as e:
+            print(e)
             print("Too many failed simulations")
             break

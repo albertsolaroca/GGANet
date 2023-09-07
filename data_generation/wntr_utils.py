@@ -11,8 +11,34 @@ from scipy import stats
 import torch
 from torch_geometric.utils import convert
 import os
+from sklearn.utils import shuffle
 from pathlib import Path
 import time
+
+
+def train_val_test(Dataset, train_split=0.8, val_split=0.1, test_split=0.1):
+    '''
+    Split the dataset into training, validation and testing
+    ------
+    Dataset:list
+        list of samples
+    *_split: float
+        percentage of data in each dataset
+        the sum must be equal to 1
+    '''
+    assert train_split + val_split + test_split == 1, "The sum of train_split, val_split, and test_split must be 1"
+
+    N_datasets = len(Dataset)
+    np.random.seed(42)
+
+    Dataset = shuffle(Dataset)
+
+    train_dataset = Dataset[:round(N_datasets * train_split)]
+    val_dataset = Dataset[
+                  round(N_datasets * train_split):(round(N_datasets * train_split) + round(N_datasets * val_split))]
+    test_dataset = Dataset[(round(N_datasets * train_split) + round(N_datasets * val_split)):]
+
+    return train_dataset, val_dataset, test_dataset
 
 
 def load_water_network(inp_file):
@@ -304,7 +330,6 @@ def get_dataset_entry(network, d_attr, d_netw, path):
     '''
 	This function creates a random input/output pair for a single network, after modifying it the original wds model.
 	'''
-
     link_feats = ['roughness', 'diameter', 'length']
     node_feats = ['base_demand', 'node_type', 'elevation', 'base_head']
     res_dict = {}
@@ -398,9 +423,10 @@ def from_wntr_to_nx(wn):
     uG_WDS = G_WDS.to_undirected()  # undirected
     sG_WDS = nx.Graph(uG_WDS)  # Simple graph
 
-    for (u,v,wt) in sG_WDS.edges.data():
+    for (u, v, wt) in sG_WDS.edges.data():
         for edge in wn.links():
-            if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (edge[1].start_node.name == v and edge[1].end_node.name == u):
+            if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (
+                    edge[1].start_node.name == v and edge[1].end_node.name == u):
                 assert isinstance(edge[1], wntr.network.elements.Pipe), "The link is not a pipe"
                 sG_WDS[u][v]['name'] = edge[1].name
                 sG_WDS[u][v]['diameter'] = edge[1].diameter
@@ -413,10 +439,13 @@ def from_wntr_to_nx(wn):
         if sG_WDS.nodes[u]['type'] == 'Junction':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['type_1H'] = 0
+            # I am not sure about the value here. It seems like the demand timeseries is omitted
+            # I want to generate a demand timeseries and take it into account
             sG_WDS.nodes[u]['base_demand'] = list(wn_nodes[i][1].demand_timeseries_list)[0].base_value
             sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
             sG_WDS.nodes[u]['base_head'] = 0
-
+            sG_WDS.nodes[u]['initial_level'] = 0
+            sG_WDS.nodes[u]['node_diameter'] = 0
         # Reservoirs have base_head but no elevation and are identified with a 1
         elif sG_WDS.nodes[u]['type'] == 'Reservoir':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
@@ -424,9 +453,20 @@ def from_wntr_to_nx(wn):
             sG_WDS.nodes[u]['base_demand'] = 0
             sG_WDS.nodes[u]['elevation'] = 0
             sG_WDS.nodes[u]['base_head'] = wn_nodes[i][1].base_head
+            sG_WDS.nodes[u]['initial_level'] = 0
+            sG_WDS.nodes[u]['node_diameter'] = 0
+        # Tanks have an elevation, as well as initial_level and diameter
+        elif sG_WDS.nodes[u]['type'] == 'Tank':
+            sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
+            sG_WDS.nodes[u]['type_1H'] = 2
+            sG_WDS.nodes[u]['base_demand'] = 0
+            sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
+            sG_WDS.nodes[u]['base_head'] = 0
+            sG_WDS.nodes[u]['initial_level'] = wn_nodes[i][1].init_level
+            sG_WDS.nodes[u]['node_diameter'] = wn_nodes[i][1].diameter
         else:
             print(u)
-            raise Exception('Only Junctions and Reservoirs so far')
+            raise Exception('Only Junctions, Reservoirs and Tanks so far')
             break
         i += 1
 
@@ -486,7 +526,14 @@ def save_database(database, names, size, out_path):
 
     Path(out_path).mkdir(parents=True, exist_ok=True)
 
-    pickle.dump(database, open(f"{out_path}\\{name}.p", "wb"))
+    # No need to dump the whole dataset since we generate the sets
+    # pickle.dump(database, open(f"{out_path}\\{name}.p", "wb"))
+
+    train_dataset, val_dataset, test_dataset = train_val_test(database)
+
+    pickle.dump(train_dataset, open(f"{out_path}train\\{name}.p", "wb"))
+    pickle.dump(val_dataset, open(f"{out_path}valid\\{name}.p", "wb"))
+    pickle.dump(test_dataset, open(f"{out_path}test\\{name}.p", "wb"))
 
     return None
 

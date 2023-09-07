@@ -10,3 +10,6 @@
 *.ipynb
 *.json
 *.p
+*.inp
+*.pickle
+*.pyc
