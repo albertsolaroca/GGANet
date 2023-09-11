@@ -521,8 +521,8 @@ def save_database(database, names, size, out_path):
     if isinstance(names, list):
         name = names + [str(size)]
         name = '_'.join(name)
-    elif isinstance(names, str):
-        name = names + '_' + str(size)
+    # elif isinstance(names, str):
+    #     name = names + '_' + str(size)
 
     Path(out_path).mkdir(parents=True, exist_ok=True)
 

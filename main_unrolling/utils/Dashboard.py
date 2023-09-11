@@ -168,11 +168,8 @@ class Dashboard:
         )
 
         error_heads_pd = self.real_heads_pd - self.predicted_heads_pd
-        print("Errors:", error_heads_pd)
         r2 = r2_score(self.real_heads_pd.to_numpy(), self.predicted_heads_pd.to_numpy(), multioutput='raw_values')
-        print("R2:", r2)
         clipped_r2 = np.clip(r2, -10, 1)
-        print("Clipped R2:", clipped_r2)
         inverted_r2 = 1 / (clipped_r2 - min(clipped_r2) + 1e-6)
 
         min_value_head = self.real_heads_pd.min().min()
