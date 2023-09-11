@@ -51,7 +51,7 @@ def load_water_network(inp_file):
     return wntr.network.WaterNetworkModel(inp_file)
 
 
-def run_wntr_simulation(wn, headloss='H-W'):
+def run_wntr_simulation(wn, headloss='H-W', continuous=False):
     '''
 	This function runs a simulation after changing the hydraulic options.
     ------
@@ -77,6 +77,16 @@ def run_wntr_simulation(wn, headloss='H-W'):
     wn.options.hydraulic.headerror = 0.0
     wn.options.hydraulic.flowchange = 0.0
     wn.options.hydraulic.inpfile_units = "LPS"
+
+    if continuous:
+        wn.options.time.duration = 86400 # 24 * 3600
+        wn.options.time.hydraulic_timestep = 3600
+        wn.options.time.quality_timestep = 3600
+        wn.options.time.report_start = 0
+        wn.options.time.report_timestep = 3600
+        wn.options.time.pattern_start = 0
+        wn.options.time.pattern_timestep = 3600
+
     sim = wntr.sim.EpanetSimulator(wn)
     results = sim.run_sim(version=2.2)
 
@@ -239,7 +249,7 @@ def alter_water_network(wn, d_attr, d_netw):
 	'''
     for attr in d_attr.keys():
         if attr in ['base_demand']:
-            set_attribute_all_nodes_rand(wn, attr, d_attr[attr]['values'], search_range=d_netw['range_bdmnd'],
+            set_attribute_all_nodes_rand(wn, attr, d_attr[attr]['values'], search_range=d_netw['range_dmnd'],
                                          multiplier=d_netw['dmnd_mlt'])
         elif attr in ['roughness']:
             set_attribute_all_links_rand(wn, attr, d_attr[attr]['values'], search_range=d_netw['range_rough'])
@@ -326,7 +336,7 @@ def select_random_value(current_value, possible_values, search_range, prob_exp=0
     return np.random.choice(possible_values[min_pos:max_pos])
 
 
-def get_dataset_entry(network, d_attr, d_netw, path):
+def get_dataset_entry(network, d_attr, d_netw, path, continuous=False):
     '''
 	This function creates a random input/output pair for a single network, after modifying it the original wds model.
 	'''
@@ -343,17 +353,18 @@ def get_dataset_entry(network, d_attr, d_netw, path):
     for feat in node_feats:
         res_dict[feat] = get_attribute_all_nodes(wn, feat)
     # get output == pressure, after running simulation
-    sim = run_wntr_simulation(wn, headloss='H-W')
+    sim = run_wntr_simulation(wn, headloss='H-W', continuous=continuous)
     res_dict['pressure'] = sim.node['pressure'].squeeze()
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
     sim_check = ((res_dict['pressure'][ix] > 0).all()) & (sim.error_code == None)
     res_dict['network_name'] = network
     res_dict['network'] = wn
+    print("SIM_CHECK", sim_check)
     return res_dict, sim, sim_check
 
 
-def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=True):
+def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=True, continuous=False):
     """
     This function creates a dataset of n_trials length for a specific network
     """
@@ -364,7 +375,9 @@ def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=
         for i in tqdm(range(n_trials), network):
             flag = False
             while not flag:
-                res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path)
+                res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path, continuous)
+                # The flag below is used to check if the simulation is correct
+                # It is one boolean for steady state but a list for the continuous options
                 if not flag:
                     n_fails += 1
                 if n_fails >= max_fails:
@@ -374,7 +387,7 @@ def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=
         for sim_i in range(n_trials):
             flag = False
             while not flag:
-                res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path)
+                res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path, continuous)
                 if not flag:
                     n_fails += 1
                 if n_fails >= max_fails:
@@ -521,8 +534,8 @@ def save_database(database, names, size, out_path):
     if isinstance(names, list):
         name = names + [str(size)]
         name = '_'.join(name)
-    # elif isinstance(names, str):
-    #     name = names + '_' + str(size)
+    elif isinstance(names, str):
+        name = names #+ '_' + str(size)
 
     Path(out_path).mkdir(parents=True, exist_ok=True)
 
@@ -538,7 +551,7 @@ def save_database(database, names, size, out_path):
     return None
 
 
-def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_fails=1e5, show=True):
+def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_fails=1e5, show=True, continuous=False):
     '''
     Creates and saves dataset given a list of networks and possible range of variable variations
     ------
@@ -551,7 +564,7 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
     d_attr: dict
         dictionary with values for each attribute
     d_newt: dict
-        dictinary with ranges for each network
+        dictionary with ranges for each network
     out_path: str
         output file location
     max_fails: int
@@ -566,7 +579,7 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
         for network in networks:
             start_time = time.time()
             all_data += create_dataset(network, net_path, n_trials, d_attr, d_netw[network], max_fails=max_fails,
-                                       show=show)
+                                       show=show, continuous=continuous)
             end_time = time.time()
             execution_time = end_time - start_time
             print(f"Execution time: {execution_time:.6f} seconds\n")
@@ -574,7 +587,7 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
     elif isinstance(networks, str):
         start_time = time.time()
         all_data += create_dataset(networks, net_path, n_trials, d_attr, d_netw[networks], max_fails=max_fails,
-                                   show=show)
+                                   show=show, continuous=continuous)
         end_time = time.time()
         execution_time = end_time - start_time
         print(f"Execution time: {execution_time:.6f} seconds\n")
@@ -612,7 +625,7 @@ def import_config(config_file):
             d_netw[network] = {}
             d_netw[network]['range_diams'] = data[network][0]
             d_netw[network]['range_rough'] = data[network][1]
-            d_netw[network]['range_bdmnd'] = data[network][2]
+            d_netw[network]['range_dmnd'] = data[network][2]
             d_netw[network]['prob_exp'] = data[network][3]
             d_netw[network]['dmnd_mlt'] = data[network][4]
 
