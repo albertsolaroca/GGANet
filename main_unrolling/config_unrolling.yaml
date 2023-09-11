@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['FOS_tank_10']
+networks: ['FOS_10']
 
 
 # number of training samples to use (if < than total)
@@ -24,7 +24,7 @@ tra_num: 8
 # model architectures to train
 algorithms:
     - MLP
-    - UnrollingModel
+#    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
@@ -33,9 +33,9 @@ hyperParams:
                 - 128
             num_layers:
                 - 2
-        UnrollingModel:
-            num_blocks:
-                - 2
+#        UnrollingModel:
+#            num_blocks:
+#                - 2
 adamParams:
     lr: 0.001
     weight_decay: 0

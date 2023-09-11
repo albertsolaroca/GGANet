@@ -158,3 +158,12 @@ def read_hyperparameters(cfg: dict, model: str):
         raise("model must be either 'GNN' or 'ANN'")
 
     return combinations
+
+
+# Convert the Data object to a NetworkX graph and visualize using Matplotlib
+def print_graph():
+    graph = torch_geometric.utils.to_networkx(tra_dataset[0])
+    pos = nx.spring_layout(graph, seed=42)  # Position the nodes for visualization
+    nx.draw(graph, pos, with_labels=True, node_color='skyblue', node_size=500, font_size=10, font_color='black')
+    plt.title("Graph Visualization")
+    plt.show()

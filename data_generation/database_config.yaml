@@ -1,11 +1,11 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['FOS'],
+dataset_names : ['FOS_tank'],
 
 # dataset_names : ['KL'],
 # number of trials
-n_trials : [100],
+n_trials : [10],
 
 # min, max, step for diameters range
 diameter_range : [0, 1.5, 0.025],
@@ -15,7 +15,7 @@ roughness_range : [50, 150, 1],
 base_demand_range : [0, 0.101, 0.0001],
 
 # diameter, roughness, and demand range, tendency for larger diameters, demand multiplier for each network
-FOS : [10, 20, 50, 1, 1],
+FOS_tank : [10, 20, 50, 1, 1],
 BAK : [10, 20, 50, 1, 0.25],
 MOD : [10, 20, 50, 3, 1],
 PES : [10, 20, 50, 1, 1],
