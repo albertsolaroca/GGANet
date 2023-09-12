@@ -360,7 +360,6 @@ def get_dataset_entry(network, d_attr, d_netw, path, continuous=False):
     sim_check = ((res_dict['pressure'][ix] > 0).all()) & (sim.error_code == None)
     res_dict['network_name'] = network
     res_dict['network'] = wn
-    print("SIM_CHECK", sim_check)
     return res_dict, sim, sim_check
 
 
@@ -378,6 +377,15 @@ def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=
                 res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path, continuous)
                 # The flag below is used to check if the simulation is correct
                 # It is one boolean for steady state but a list for the continuous options
+
+                # Pandas series "flag" to list
+                if isinstance(flag, pd.Series):
+                    flag = flag.tolist()
+                # If flag is a list with a False then make it False
+                if isinstance(flag, list):
+                    if False in flag:
+                        flag = False
+
                 if not flag:
                     n_fails += 1
                 if n_fails >= max_fails:
@@ -388,6 +396,12 @@ def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=
             flag = False
             while not flag:
                 res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path, continuous)
+
+                # If flag is a list with a False then make it False
+                if isinstance(flag, list):
+                    if False in flag:
+                        flag = False
+
                 if not flag:
                     n_fails += 1
                 if n_fails >= max_fails:
@@ -486,7 +500,7 @@ def from_wntr_to_nx(wn):
     return sG_WDS  # df_nodes, df_links, sG_WDS
 
 
-def convert_to_pyg(dataset):
+def convert_to_pyg(dataset, continuous):
     '''
     This function converts a list of simulations into a PyTorch Geometric Data type
     ------
@@ -502,11 +516,15 @@ def convert_to_pyg(dataset):
 
         # Add network name
         pyg_data.name = sample['network_name']
-        # Add diamters for MLP
+        # Add diameters for MLP
         pyg_data.diameters = torch.tensor(sample['diameter']).float()
-        # Add simulaton results
-        pyg_data.pressure = torch.tensor(sample['pressure'])
-
+        # Add simulation results
+        if continuous:
+            press_shape = sample['pressure'].shape
+            press_reshaped = sample['pressure'].values.reshape(press_shape[0], press_shape[1])
+            pyg_data.pressure = torch.tensor(press_reshaped)
+        else:
+            pyg_data.pressure = torch.tensor(sample['pressure'])
         # convert to float where needed
         pyg_data.base_demand = pyg_data.base_demand.float()
         pyg_data.diameter = pyg_data.diameter.float()
@@ -571,6 +589,8 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
         number of maximum failed simulations per network
     show: bool
         if True, shows a bar progression for each simulation
+    continuous: bool
+        if True, the simulation is run for 24 hours instead of a single period
     '''
     # create dataset
     all_data = []
@@ -593,7 +613,7 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
         print(f"Execution time: {execution_time:.6f} seconds\n")
 
     # Create PyTorch Geometric dataset
-    all_pyg_data = convert_to_pyg(all_data)
+    all_pyg_data = convert_to_pyg(all_data, continuous)
 
     # Save database
     save_database(all_pyg_data, names=networks, size=n_trials, out_path=out_path)

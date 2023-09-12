@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['FOS_tank_1000']
+networks: ['FOS_tank']
 
 
 # number of training samples to use (if < than total)
@@ -23,18 +23,18 @@ tra_num: 8
 
 # model architectures to train
 algorithms:
-    - MLP
+#    - MLP
     - LSTMModel
 #    - BaselineUnrolling
 #    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
-        MLP:
-            hid_channels:
-                - 128
-            num_layers:
-                - 2
+#        MLP:
+#            hid_channels:
+#                - 128
+#            num_layers:
+#                - 2
         LSTMModel:
             hid_channels:
                 - 128
