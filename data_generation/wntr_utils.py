@@ -86,6 +86,8 @@ def run_wntr_simulation(wn, headloss='H-W', continuous=False):
         wn.options.time.report_timestep = 3600
         wn.options.time.pattern_start = 0
         wn.options.time.pattern_timestep = 3600
+    else:
+        wn.options.time.duration = 0
 
     sim = wntr.sim.EpanetSimulator(wn)
     results = sim.run_sim(version=2.2)
@@ -241,49 +243,35 @@ def get_wdn_options(networks, path):
     return df_options
 
 
-def alter_water_network(wn, d_attr, d_netw):
+def alter_water_network(wn, randomized_demands=None):
     '''
 	This function randomly modifies nodes and edges attributes in the water network according to the distributions in d_attr.
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
-    for attr in d_attr.keys():
-        if attr in ['base_demand']:
-            set_attribute_all_nodes_rand(wn, attr, d_attr[attr]['values'], search_range=d_netw['range_dmnd'],
-                                         multiplier=d_netw['dmnd_mlt'])
-        elif attr in ['roughness']:
-            set_attribute_all_links_rand(wn, attr, d_attr[attr]['values'], search_range=d_netw['range_rough'])
-        elif attr in ['diameter']:
-            set_attribute_all_links_rand(wn, attr, d_attr[attr]['values'], search_range=d_netw['range_diams'],
-                                         prob_exp=d_netw['prob_exp'])
-        else:
-            raise AttributeError('This attribute cannot be randomly assigned.')
+    if randomized_demands:
+
+        set_attribute_all_nodes_rand(wn, randomized_demands)
+
     return None
 
 
-def set_attribute_all_nodes_rand(wn, attr_str, attr_values, search_range, prob_exp=0, multiplier=1):
+def set_attribute_all_nodes_rand(wn, randomized_demands):
     '''
 	This function changes an attribute attr_str (e.g., base demand) from all nodes in the network based on their orignal value.
 	The list of potential values is contained in attr_values. search_range identifies how many values to the left and to the right
 	of the original value are considered for the random selection.
 
-	Tested for: base_demand
+	Tested for: demand_multipliers
 	'''
-    LPS_TO_GPM = 1
 
-    if attr_str not in ['base_demand']:
-        raise AttributeError('You can only change base_demand as node attribute.')
     units = wn.options.hydraulic.inpfile_units
+
     for id in wn.node_name_list:
         node = wn.get_node(id)
-        if hasattr(node, 'base_demand'):
-            attr = node.base_demand * multiplier
-            if units == 'GPM':
-                node.demand_timeseries_list[0].base_value = select_random_value(attr * LPS_TO_GPM, attr_values,
-                                                                                search_range, prob_exp)
-            else:
-                node.demand_timeseries_list[0].base_value = select_random_value(attr, attr_values, search_range,
-                                                                                prob_exp)
+        # select a random int between 0 and 2
+        node.demand_timeseries = randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])]
+
     return None
 
 
@@ -336,7 +324,7 @@ def select_random_value(current_value, possible_values, search_range, prob_exp=0
     return np.random.choice(possible_values[min_pos:max_pos])
 
 
-def get_dataset_entry(network, d_attr, d_netw, path, continuous=False):
+def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     '''
 	This function creates a random input/output pair for a single network, after modifying it the original wds model.
 	'''
@@ -346,7 +334,9 @@ def get_dataset_entry(network, d_attr, d_netw, path, continuous=False):
     # load and alter network
     inp_file = f'{path}/{network}.inp'
     wn = load_water_network(inp_file)
-    alter_water_network(wn, d_attr, d_netw)
+
+    if continuous:
+        alter_water_network(wn, randomized_demands)
     # retrieve input features
     for feat in link_feats:
         res_dict[feat] = get_attribute_all_links(wn, feat)
@@ -363,50 +353,34 @@ def get_dataset_entry(network, d_attr, d_netw, path, continuous=False):
     return res_dict, sim, sim_check
 
 
-def create_dataset(network, path, n_trials, d_attr, d_netw, max_fails=1e4, show=True, continuous=False):
+def create_dataset(network, path, n_trials, max_fails=1e4, continuous=False, randomized_demands=None):
     """
     This function creates a dataset of n_trials length for a specific network
     """
     n_fails = 0
     dataset = []
 
-    if show == True:
-        for i in tqdm(range(n_trials), network):
-            flag = False
-            while not flag:
-                res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path, continuous)
-                # The flag below is used to check if the simulation is correct
-                # It is one boolean for steady state but a list for the continuous options
 
-                # Pandas series "flag" to list
-                if isinstance(flag, pd.Series):
-                    flag = flag.tolist()
-                # If flag is a list with a False then make it False
-                if isinstance(flag, list):
-                    if False in flag:
-                        flag = False
+    for i in tqdm(range(n_trials), network):
+        flag = False
+        while not flag:
+            res_dict, _, flag = get_dataset_entry(network, path, continuous, randomized_demands=randomized_demands)
+            # The flag below is used to check if the simulation is correct
+            # It is one boolean for steady state but a list for the continuous options
 
-                if not flag:
-                    n_fails += 1
-                if n_fails >= max_fails:
-                    raise RecursionError(f'Max number of fails ({max_fails}) reached.')
-            dataset.append(res_dict)
-    else:
-        for sim_i in range(n_trials):
-            flag = False
-            while not flag:
-                res_dict, _, flag = get_dataset_entry(network, d_attr, d_netw, path, continuous)
+            # Pandas series "flag" to list and if there is one False make the whole list false
+            if isinstance(flag, pd.Series):
+                flag = flag.tolist()
+                if False in flag:
+                    flag = False
+                else:
+                    flag = True
 
-                # If flag is a list with a False then make it False
-                if isinstance(flag, list):
-                    if False in flag:
-                        flag = False
-
-                if not flag:
-                    n_fails += 1
-                if n_fails >= max_fails:
-                    raise RecursionError(f'Max number of fails ({max_fails}) reached.')
-            dataset.append(res_dict)
+            if not flag:
+                n_fails += 1
+            if n_fails >= max_fails:
+                raise RecursionError(f'Max number of fails ({max_fails}) reached.')
+        dataset.append(res_dict)
 
     return dataset
 
@@ -569,7 +543,7 @@ def save_database(database, names, size, out_path):
     return None
 
 
-def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_fails=1e5, show=True, continuous=False):
+def create_and_save(network, net_path, n_trials, out_path, max_fails=1e5, continuous=False, randomized_demands=None):
     '''
     Creates and saves dataset given a list of networks and possible range of variable variations
     ------
@@ -595,28 +569,18 @@ def create_and_save(networks, net_path, n_trials, d_attr, d_netw, out_path, max_
     # create dataset
     all_data = []
 
-    if isinstance(networks, list):
-        for network in networks:
-            start_time = time.time()
-            all_data += create_dataset(network, net_path, n_trials, d_attr, d_netw[network], max_fails=max_fails,
-                                       show=show, continuous=continuous)
-            end_time = time.time()
-            execution_time = end_time - start_time
-            print(f"Execution time: {execution_time:.6f} seconds\n")
 
-    elif isinstance(networks, str):
-        start_time = time.time()
-        all_data += create_dataset(networks, net_path, n_trials, d_attr, d_netw[networks], max_fails=max_fails,
-                                   show=show, continuous=continuous)
-        end_time = time.time()
-        execution_time = end_time - start_time
-        print(f"Execution time: {execution_time:.6f} seconds\n")
+    start_time = time.time()
+    all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous, randomized_demands=randomized_demands)
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Execution time: {execution_time:.6f} seconds\n")
 
     # Create PyTorch Geometric dataset
     all_pyg_data = convert_to_pyg(all_data, continuous)
 
     # Save database
-    save_database(all_pyg_data, names=networks, size=n_trials, out_path=out_path)
+    save_database(all_pyg_data, names=network, size=n_trials, out_path=out_path)
 
     return None
 
@@ -636,17 +600,23 @@ def import_config(config_file):
         # dictionary with values for each attribute
         d_attr = {}
         for ranges in ['diameter_range', 'roughness_range', 'base_demand_range']:
-            name = ranges.replace('_range', '')
-            d_attr[name] = {'values': np.arange(data[ranges][0], data[ranges][1], data[ranges][2])[1:]}
+            try:
+                name = ranges.replace('_range', '')
+                d_attr[name] = {'values': np.arange(data[ranges][0], data[ranges][1], data[ranges][2])[1:]}
+            except KeyError:
+                print("Could not find " + ranges + " in the config file...skipping")
 
         # dictinary with ranges for each network
         d_netw = {}
         for network in networks:
-            d_netw[network] = {}
-            d_netw[network]['range_diams'] = data[network][0]
-            d_netw[network]['range_rough'] = data[network][1]
-            d_netw[network]['range_dmnd'] = data[network][2]
-            d_netw[network]['prob_exp'] = data[network][3]
-            d_netw[network]['dmnd_mlt'] = data[network][4]
+            try:
+                d_netw[network] = {}
+                d_netw[network]['range_diams'] = data[network][0]
+                d_netw[network]['range_rough'] = data[network][1]
+                d_netw[network]['range_dmnd'] = data[network][2]
+                d_netw[network]['prob_exp'] = data[network][3]
+                d_netw[network]['dmnd_mlt'] = data[network][4]
+            except KeyError:
+                print("Could not find " + network + " attributes in the config file...skipping")
 
     return networks, n_trials, d_attr, d_netw

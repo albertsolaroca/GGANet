@@ -1,11 +1,13 @@
+import os
 import sys
-from wntr_utils import *
+from wntr_utils import import_config, get_wdn_components, create_and_save
 import argparse
 import traceback
+import demand_generation
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    # Argument for continuous (Extended Period Analysis data generation
+    # Argument for continuous (Extended Period Analysis data generation)
     parser.add_argument('-c')
     args = parser.parse_args()
 
@@ -21,14 +23,17 @@ if __name__ == '__main__':
     df_counts = get_wdn_components(networks, path)
     ordered_networks = df_counts.sort_values(by=['nodes']).index.tolist()
 
+    #
+
     for i, network in enumerate(ordered_networks):
         out_path = os.getcwd() + '\\datasets\\'
         for ix_trials, trials in enumerate(n_trials):
             print(
                 f'Working with {network}, network {i + 1} of {len(ordered_networks)} || size: {trials}, {ix_trials + 1} of {len(n_trials)}')
             try:
-                create_and_save(network, path, n_trials=trials, d_attr=d_attr, d_netw=d_netw, out_path=out_path,
-                                max_fails=10 * trials, show=True, continuous=continuous)
+                randomized_demands = demand_generation.generate_demand_patterns()
+                create_and_save(network, path, n_trials=trials, out_path=out_path,
+                                max_fails=10 * trials, continuous=continuous, randomized_demands=randomized_demands)
             except Exception as e:
                 print(e)
                 traceback.print_exc()
