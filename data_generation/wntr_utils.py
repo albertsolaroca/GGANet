@@ -320,6 +320,7 @@ def get_dataset_entry(network, d_attr, d_netw, path):
     # get output == pressure, after running simulation
     sim = run_wntr_simulation(wn, headloss='H-W')
     res_dict['pressure'] = sim.node['pressure'].squeeze()
+    res_dict['flowrate'] = sim.link['flowrate'].squeeze()
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
     sim_check = ((res_dict['pressure'][ix] > 0).all()) & (sim.error_code == None)
@@ -387,7 +388,7 @@ def plot_dataset_attribute_distribution(dataset, attribute, figsize=(20, 5), bin
     return df_attr
 
 
-def from_wntr_to_nx(wn):
+def from_wntr_to_nx(wn,flows):
     '''
 	This function converts a WNTR object to networkx
 	'''
@@ -406,6 +407,7 @@ def from_wntr_to_nx(wn):
                 sG_WDS[u][v]['diameter'] = edge[1].diameter
                 sG_WDS[u][v]['length'] = edge[1].length
                 sG_WDS[u][v]['roughness'] = edge[1].roughness
+                sG_WDS[u][v]['flowrate'] = flows[edge[0]]
 
     i = 0
     for u in sG_WDS.nodes:
@@ -444,20 +446,21 @@ def convert_to_pyg(dataset):
 
     for sample in dataset:
         wn = sample['network']
+        flows = sample['flowrate']
         # create PyG Data 
-        pyg_data = convert.from_networkx(from_wntr_to_nx(wn))
+        pyg_data = convert.from_networkx(from_wntr_to_nx(wn,flows))
 
         # Add network name
         pyg_data.name = sample['network_name']
-        # Add diamters for MLP
+        # Add diameters for MLP
         pyg_data.diameters = torch.tensor(sample['diameter']).float()
-        # Add simulaton results
+        # Add simulation results
         pyg_data.pressure = torch.tensor(sample['pressure'])
-
         # convert to float where needed
         pyg_data.base_demand = pyg_data.base_demand.float()
         pyg_data.diameter = pyg_data.diameter.float()
         pyg_data.roughness = pyg_data.roughness.float()
+        pyg_data.flowrate = pyg_data.flowrate.float()
 
         all_pyg_data.append(pyg_data)
 
