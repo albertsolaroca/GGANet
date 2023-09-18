@@ -31,9 +31,14 @@ if __name__ == '__main__':
             print(
                 f'Working with {network}, network {i + 1} of {len(ordered_networks)} || size: {trials}, {ix_trials + 1} of {len(n_trials)}')
             try:
-                randomized_demands = demand_generation.generate_demand_patterns()
+                if continuous:
+                    randomized_demands = demand_generation.generate_demand_patterns()
+                else:
+                    randomized_demands = None
+
                 create_and_save(network, path, n_trials=trials, out_path=out_path,
                                 max_fails=10 * trials, continuous=continuous, randomized_demands=randomized_demands)
+
             except Exception as e:
                 print(e)
                 traceback.print_exc()

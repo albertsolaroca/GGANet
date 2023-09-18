@@ -23,26 +23,26 @@ tra_num: 8
 
 # model architectures to train
 algorithms:
-#    - MLP
-    - LSTMModel
-#    - BaselineUnrolling
+    - MLP
+#    - LSTMModel
+    - BaselineUnrolling
 #    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
-#        MLP:
-#            hid_channels:
-#                - 128
-#            num_layers:
-#                - 2
-        LSTMModel:
+        MLP:
             hid_channels:
                 - 128
             num_layers:
                 - 2
-#        BaselineUnrolling:
-#            num_blocks:
-#                - 2
+#        LSTMModel:
+#            hid_channels:
+#                - 128
+#            num_layers:
+#                -
+        BaselineUnrolling:
+            num_blocks:
+                - 2
 #        UnrollingModel:
 #            num_blocks:
 #                - 2
