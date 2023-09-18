@@ -250,7 +250,6 @@ def alter_water_network(wn, randomized_demands=None):
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
     if randomized_demands:
-
         set_attribute_all_nodes_rand(wn, randomized_demands)
 
     return None
@@ -266,12 +265,11 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
 	'''
 
     units = wn.options.hydraulic.inpfile_units
-
-    for id in wn.node_name_list:
+    # Setting the demand per node to a random value out of three randomly generated types of households
+    for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        # select a random int between 0 and 2
-        node.demand_timeseries = randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])]
-
+        wn.add_pattern(f'pattern_node_{id}', randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])])
+        node.demand_timeseries_list.pattern = wn.get_pattern(f'pattern_node_{id}')
     return None
 
 
