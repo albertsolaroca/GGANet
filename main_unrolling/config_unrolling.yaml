@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['FOS_tank']
+networks: ['FOS']
 
 
 # number of training samples to use (if < than total)

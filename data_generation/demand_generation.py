@@ -17,7 +17,7 @@ def generate_demand_patterns():
     # Simulate water consumption for house (xarray.DataArray)
     consumption_one = one_person_house.simulate(num_patterns=25, duration='1 day')
     consumption_two = two_person_house.simulate(num_patterns=50, duration='1 day')
-    consumption_family = family.simulate(num_patterns=60, duration='1 day')
+    consumption_family = family.simulate(num_patterns=80, duration='1 day')
 
     all_cons = {one_person_house.house_type: consumption_one,
                 two_person_house.house_type: consumption_two,
@@ -34,6 +34,14 @@ def generate_demand_patterns():
             averaged_consumption.append(hourly_average_cons)
 
         tot_avg_cons[cons] = averaged_consumption
+
+    # Write tot_avg_cons to yaml file without yaml packages
+    with open('demand_patterns.yaml', 'w') as file:
+        file.write('demand_patterns:\n')
+        for cons in tot_avg_cons:
+            file.write(f'  {cons}: {tot_avg_cons[cons]}\n')
+
+
 
 
     return tot_avg_cons
