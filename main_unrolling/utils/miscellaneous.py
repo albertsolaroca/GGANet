@@ -14,10 +14,9 @@ def read_config(config_file):
     
     with open(config_file) as f:
         cfg = yaml.safe_load(f)
-    
-    # TODO: thorough check with asserts needed 
-    # ## I would just output a warning (this way I can still keep the hyperparameters of each algortihm)
-    assert set(cfg['algorithms']) == set(cfg['hyperParams'].keys()), "Mismatch between algorithms and hyperparams!"        
+
+    assert set(cfg['algorithms']).issubset(set(cfg['hyperParams'].keys())),\
+        "There is an algorithm without hyperparameters"
         
     return cfg
     

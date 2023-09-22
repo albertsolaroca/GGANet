@@ -249,9 +249,7 @@ def alter_water_network(wn, randomized_demands=None):
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
-    if randomized_demands:
-        set_attribute_all_nodes_rand(wn, randomized_demands)
-
+    set_attribute_all_nodes_rand(wn, randomized_demands)
     return None
 
 
@@ -264,12 +262,15 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
 	Tested for: demand_multipliers
 	'''
 
-    units = wn.options.hydraulic.inpfile_units
     # Setting the demand per node to a random value out of three randomly generated types of households
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        wn.add_pattern(f'pattern_node_{id}', randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])])
-        node.demand_timeseries_list.pattern = wn.get_pattern(f'pattern_node_{id}')
+        node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 10000)) *
+                                                     np.random.choice([0.0000008, 0.0000001, 0.00000002]))
+        if randomized_demands:
+            wn.add_pattern(f'pattern_node_{id}', randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])])
+            node.demand_timeseries_list[0].pattern_name = f'pattern_node_{id}'
+
     return None
 
 
@@ -333,8 +334,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     inp_file = f'{path}/{network}.inp'
     wn = load_water_network(inp_file)
 
-    if continuous:
-        alter_water_network(wn, randomized_demands)
+    alter_water_network(wn, randomized_demands)
     # retrieve input features
     for feat in link_feats:
         res_dict[feat] = get_attribute_all_links(wn, feat)
@@ -351,7 +351,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     return res_dict, sim, sim_check
 
 
-def create_dataset(network, path, n_trials, max_fails=1e4, continuous=False, randomized_demands=None):
+def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None):
     """
     This function creates a dataset of n_trials length for a specific network
     """
@@ -379,7 +379,7 @@ def create_dataset(network, path, n_trials, max_fails=1e4, continuous=False, ran
             if n_fails >= max_fails:
                 raise RecursionError(f'Max number of fails ({max_fails}) reached.')
         dataset.append(res_dict)
-
+    print("Total number of fails was ", n_fails)
     return dataset
 
 
@@ -541,7 +541,7 @@ def save_database(database, names, size, out_path):
     return None
 
 
-def create_and_save(network, net_path, n_trials, out_path, max_fails=1e5, continuous=False, randomized_demands=None):
+def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, continuous=False, randomized_demands=None):
     '''
     Creates and saves dataset given a list of networks and possible range of variable variations
     ------
@@ -595,26 +595,4 @@ def import_config(config_file):
         networks = data['dataset_names']
         n_trials = data['n_trials']
 
-        # dictionary with values for each attribute
-        d_attr = {}
-        for ranges in ['diameter_range', 'roughness_range', 'base_demand_range']:
-            try:
-                name = ranges.replace('_range', '')
-                d_attr[name] = {'values': np.arange(data[ranges][0], data[ranges][1], data[ranges][2])[1:]}
-            except KeyError:
-                print("Could not find " + ranges + " in the config file...skipping")
-
-        # dictinary with ranges for each network
-        d_netw = {}
-        for network in networks:
-            try:
-                d_netw[network] = {}
-                d_netw[network]['range_diams'] = data[network][0]
-                d_netw[network]['range_rough'] = data[network][1]
-                d_netw[network]['range_dmnd'] = data[network][2]
-                d_netw[network]['prob_exp'] = data[network][3]
-                d_netw[network]['dmnd_mlt'] = data[network][4]
-            except KeyError:
-                print("Could not find " + network + " attributes in the config file...skipping")
-
-    return networks, n_trials, d_attr, d_netw
+    return networks, n_trials

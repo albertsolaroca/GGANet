@@ -59,7 +59,10 @@ def testing(model, loader, alpha=0, normalization=None):
                 y = y.to(device).double()
 
                 # ANN model prediction
-                out = model.double()(x)
+                if len(y.shape) > 2:
+                    out = model.double()(x, y.shape[1])
+                else:
+                    out = model.double()(x)
                 pred.append(out.detach().cpu().numpy())
 
                 # MSE loss function

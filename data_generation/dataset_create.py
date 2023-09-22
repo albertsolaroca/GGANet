@@ -17,7 +17,7 @@ if __name__ == '__main__':
         continuous = False
 
     # get configurations
-    networks, n_trials, d_attr, d_netw = import_config('database_config.yaml')
+    networks, n_trials = import_config('database_config.yaml')
 
     path = f'{sys.path[0]}/networks/'
     df_counts = get_wdn_components(networks, path)

@@ -96,6 +96,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             batch = batch.to(device)
 
             # Model prediction
+
             preds = model.double()(batch)
 
             # loss function = MSE if alpha=0
@@ -110,9 +111,13 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             y = y.to(device).double()
 
             # Model prediction
-            preds = model.double()(x)
-            # print("Predictionshape:", preds.shape, "yshape:", y.shape)
+            # If dataset is continuous then we need to pass the sequence length (y.shape[1]) to the model
+            if len(y.shape) > 2:
+                preds = model.double()(x, y.shape[1])
+            else:
+                preds = model.double()(x)
             # MSE loss function
+            # TODO Check how error is calculated. Ensure every iteration is penalized.
             loss = nn.MSELoss()(preds, y)
 
         # Normalization to have more representative loss values

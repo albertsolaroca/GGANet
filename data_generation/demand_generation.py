@@ -2,27 +2,37 @@
 The following example demonstrates how to import WNTR, generate a water network
 model from an INP file, simulate hydraulics, and plot simulation results on the network.
 """
+import threading
+
 from matplotlib import pyplot as plt
 import pysimdeum
+
+def simulate_thread(house_type, num_patterns, duration, output):
+    house = pysimdeum.built_house(house_type=house_type)
+    consumption = house.simulate(num_patterns=num_patterns, duration=duration)
+    output[house_type] = consumption
 
 def generate_demand_patterns():
 
     # Demand generation
 
     # Build houses
-    one_person_house = pysimdeum.built_house(house_type='one_person')
-    two_person_house = pysimdeum.built_house(house_type='two_person')
-    family = pysimdeum.built_house(house_type='family')
-
     # Simulate water consumption for house (xarray.DataArray)
-    consumption_one = one_person_house.simulate(num_patterns=25, duration='1 day')
-    consumption_two = two_person_house.simulate(num_patterns=50, duration='1 day')
-    consumption_family = family.simulate(num_patterns=80, duration='1 day')
+    all_cons = {}
+    # Create threads for each simulation
+    thread1 = threading.Thread(target=simulate_thread, args=('one_person', 25, '1 day', all_cons))
+    thread2 = threading.Thread(target=simulate_thread, args=('two_person', 50, '1 day', all_cons))
+    thread3 = threading.Thread(target=simulate_thread, args=('family', 80, '1 day', all_cons))
 
-    all_cons = {one_person_house.house_type: consumption_one,
-                two_person_house.house_type: consumption_two,
-                family.house_type: consumption_family}
+    # Start the threads
+    thread1.start()
+    thread2.start()
+    thread3.start()
 
+    # Wait for all threads to finish
+    thread1.join()
+    thread2.join()
+    thread3.join()
 
     tot_avg_cons = {}
     tot_rolling_cons = {}
