@@ -13,3 +13,6 @@
 *.inp
 *.pickle
 *.pyc
+*.p
+*.bin
+*.rpt
