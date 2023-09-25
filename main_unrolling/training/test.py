@@ -71,7 +71,7 @@ def testing(model, loader, alpha=0, normalization=None):
                 y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure').flatten()
                 loss = nn.MSELoss()(out, y)
 
-            losses.append(loss.cpu().detach())
+            losses.append(torch.sqrt(loss).cpu().detach())
 
         preds = np.concatenate(pred).reshape(-1, 1)
         reals = np.concatenate(real).reshape(-1, 1)
