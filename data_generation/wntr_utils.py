@@ -265,8 +265,8 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
     # Setting the demand per node to a random value out of three randomly generated types of households
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 10000)) *
-                                                     np.random.choice([0.0000008, 0.0000001, 0.00000002]))
+        node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 10000)) * 0.0000002)
+                                                    # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if randomized_demands:
             wn.add_pattern(f'pattern_node_{id}', randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])])
             node.demand_timeseries_list[0].pattern_name = f'pattern_node_{id}'

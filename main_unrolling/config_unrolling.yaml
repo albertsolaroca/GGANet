@@ -24,9 +24,9 @@ tra_num: 100
 # model architectures to train
 algorithms:
 #    - MLP
-#    - LSTMModel
+    - LSTMModel
 #    - BaselineUnrolling
-    - UnrollingModel
+#    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
