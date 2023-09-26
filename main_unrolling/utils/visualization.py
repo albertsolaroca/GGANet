@@ -39,6 +39,8 @@ def plot_loss(train_losses, val_losses=None, name=None, scale='log'):
     plt.ylabel('loss')
     plt.yscale(scale)
     if val_losses is not None:
+        # prepend validation losses with empty value
+        # val_losses = [None] + val_losses
         plt.plot(val_losses, 'r-')
         plt.legend(['Training', 'Validation'])
     plt.title('Loss vs. No. of epochs')

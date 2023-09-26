@@ -167,7 +167,7 @@ def training(model, optimizer, train_loader, val_loader,
 
     # start measuring time
     start_time = time.time()
-    early_stopping = EarlyStopping(patience=patience, delta=1e-3, path=path + 'checkpoint.pt')
+    early_stopping = EarlyStopping(patience=patience, delta=1e-5, path=path + 'checkpoint.pt')
 
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):
@@ -185,7 +185,7 @@ def training(model, optimizer, train_loader, val_loader,
         if epoch % lr_epoch == 0:
             learning_rate = optimizer.param_groups[0]['lr'] / lr_rate
             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-            print("Learning rate is divided by ", lr_rate, "to:", learning_rate)
+            print("Learning rate is divided by", lr_rate, "to:", learning_rate)
 
             # Routine for early stopping
         early_stopping(val_loss, model)

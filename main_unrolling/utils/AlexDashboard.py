@@ -203,11 +203,11 @@ class Dashboard:
 
                 real_signal_at_t = self.real_heads_pd.iloc[t, :]
                 value = real_signal_at_t.values
-
+                print("The min value is ", min(value), " and the value is ", value)
                 sizeref = 2. * max(abs(value)) / (4 ** 2)
                 self.f.update_traces(text=self._get_text(value), selector=dict(name="coordinates"))
                 self.f.update_traces(marker=dict(color=value, size=value - min_value_head, sizeref=sizeref, sizemin=1,
-                                                 colorscale='YlGnBu', cmax=2, cmin=-2),
+                                                 colorscale='YlGnBu', cmax=2, cmin=0),
                                      selector=dict(name="coordinates"))
                 self.f.update_yaxes(title_text="Head [masl]", row=1, col=2)
 
@@ -219,7 +219,7 @@ class Dashboard:
                 sizeref = 2. * max(abs(value)) / (4 ** 2)
                 self.f.update_traces(text=self._get_text(value), selector=dict(name="coordinates"))
                 self.f.update_traces(marker=dict(color=value, size=value - min_value_head, sizeref=sizeref, sizemin=1,
-                                                 colorscale='YlGnBu', cmax=2, cmin=-2),
+                                                 colorscale='YlGnBu', cmax=2, cmin=0),
                                      selector=dict(name="coordinates"))
                 self.f.update_yaxes(title_text="Head [masl]", row=1, col=2)
 

@@ -226,6 +226,6 @@ class Dashboard:
                 self.f.update_traces(text=self._get_text(r2), selector=dict(name="coordinates"))
 
         textbox.observe(response, names="value")
-        self.f.show()
+        # self.f.show()
 
         return widgets.VBox([textbox, self.f])
