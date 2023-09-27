@@ -352,7 +352,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     return res_dict, sim, sim_check
 
 
-def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None):
+def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None, count=10):
     """
     This function creates a dataset of n_trials length for a specific network
     """
@@ -373,6 +373,9 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
                 if False in flag:
                     flag = False
                 else:
+                    if count > 0:
+                        count -= 1
+                        wntr.network.write_inpfile(res_dict['network'], f'{path}/{network}_{10 - count}.inp')
                     flag = True
 
             if not flag:
@@ -432,7 +435,7 @@ def from_wntr_to_nx(wn,flows):
                 sG_WDS[u][v]['diameter'] = edge[1].diameter
                 sG_WDS[u][v]['length'] = edge[1].length
                 sG_WDS[u][v]['roughness'] = edge[1].roughness
-                sG_WDS[u][v]['flowrate'] = flows[edge[0]]
+                # sG_WDS[u][v]['flowrate'] = flows[edge[0]]
 
     i = 0
     for u in sG_WDS.nodes:
@@ -505,7 +508,8 @@ def convert_to_pyg(dataset, continuous):
         pyg_data.base_demand = pyg_data.base_demand.float()
         pyg_data.diameter = pyg_data.diameter.float()
         pyg_data.roughness = pyg_data.roughness.float()
-        pyg_data.flowrate = pyg_data.flowrate.float()
+        # I believe giving the flowrate is wrong
+        # pyg_data.flowrate = pyg_data.flowrate.float()
 
         all_pyg_data.append(pyg_data)
 
