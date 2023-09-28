@@ -78,22 +78,23 @@ class Dashboard:
         # create our callback function
         def update_point(trace, points, selector):
             try:
+                correction_term = self.index_corrector[points.point_inds[0]]
+                if ~np.isnan(correction_term):
+                    real_time_series = self.real_heads_pd[self.node_indexes[points.point_inds[0]] - correction_term]
+                    model_time_series = self.predicted_heads_pd[self.node_indexes[points.point_inds[0]] - correction_term]
 
-                real_time_series = self.real_heads_pd[self.node_indexes[points.point_inds[0]]]
-                model_time_series = self.predicted_heads_pd[self.node_indexes[points.point_inds[0]]]
+                    f.data[1].x = list(real_time_series.index)
+                    f.data[2].x = list(model_time_series.index)
 
-                f.data[1].x = list(real_time_series.index)
-                f.data[2].x = list(model_time_series.index)
+                    f.data[1].y = real_time_series.values
+                    f.data[2].y = model_time_series.values
 
-                f.data[1].y = real_time_series.values
-                f.data[2].y = model_time_series.values
+                    f.data[4].x, f.data[4].y = [], []
+                    f.data[4].x, f.data[4].y = points.xs, points.ys
 
-                f.data[4].x, f.data[4].y = [], []
-                f.data[4].x, f.data[4].y = points.xs, points.ys
+                    node_name = self.node_indexes[points.point_inds[0]]
 
-                node_name = self.node_indexes[points.point_inds[0]]
-
-                f.layout.annotations[1].update(text=f"Comparison of hydraulic head for node {node_name}")
+                    f.layout.annotations[1].update(text=f"Comparison of hydraulic head for node {node_name}")
             except Exception as e:
                 pass
 

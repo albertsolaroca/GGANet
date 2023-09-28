@@ -16,3 +16,4 @@
 *.bin
 *.rpt
 *-checkpoint.ipynb
+/main_unrolling/wandb/
