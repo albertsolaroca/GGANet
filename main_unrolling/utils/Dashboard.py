@@ -75,13 +75,22 @@ class Dashboard:
         f.update_yaxes(title_text="Head [masl]", row=1, col=2)
         f.update_xaxes(title_text="Time [hours]", row=1, col=2)
 
+        # Code used to export HTML
+        # f.write_html('./my_HTML.html', auto_play=False)
         # create our callback function
-        def update_point(trace, points, selector):
+        def update_point(trace, points, selector, manual_override=False):
             try:
-                correction_term = self.index_corrector[points.point_inds[0]]
+
+                if manual_override:
+                    point_index = points
+                    correction_term = self.index_corrector[points]
+                else:
+                    point_index = points.point_inds[0]
+                    correction_term = self.index_corrector[points.point_inds[0]]
+
                 if ~np.isnan(correction_term):
-                    real_time_series = self.real_heads_pd[self.node_indexes[points.point_inds[0]] - correction_term]
-                    model_time_series = self.predicted_heads_pd[self.node_indexes[points.point_inds[0]] - correction_term]
+                    real_time_series = self.real_heads_pd[self.node_indexes[point_index - correction_term]]
+                    model_time_series = self.predicted_heads_pd[self.node_indexes[point_index] - correction_term]
 
                     f.data[1].x = list(real_time_series.index)
                     f.data[2].x = list(model_time_series.index)

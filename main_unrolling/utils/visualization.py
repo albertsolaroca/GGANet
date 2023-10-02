@@ -2,6 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import wandb
 import wntr
 import networkx as nx
 from torch_geometric.data import Data
@@ -44,9 +45,12 @@ def plot_loss(train_losses, val_losses=None, name=None, scale='log'):
         plt.plot(val_losses, 'r-')
         plt.legend(['Training', 'Validation'])
     plt.title('Loss vs. No. of epochs')
+
     if name is not None:
         plt.savefig(name)
         plt.close()
+
+    return name
 
 
 # Create plot for R2
@@ -79,13 +83,14 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
         plt.ylim([0, MAX])
         plt.title("Prediction vs Real")
         plt.xlabel('Predicted pressure [m]')
-        plt.ylabel('Real pressure [m]');
+        plt.ylabel('Real pressure [m]')
+
 
         if name is not None:
             plt.savefig(name)
             plt.close()
 
-    return r2_score(real, pred)
+    return r2_score(real, pred), name
 
 def plot_pressure(database, normalization=None):
     '''
