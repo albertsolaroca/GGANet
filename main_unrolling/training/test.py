@@ -45,7 +45,7 @@ def testing(model, loader, alpha=0, normalization=None):
                 y = batch.y.to(device)
 
                 # GNN model prediction
-                out = model.double()(batch)
+                out = model.float()(batch)
                 pred.append(out.detach().cpu().numpy())
 
                 # loss function = MSE if alpha=0
@@ -55,14 +55,14 @@ def testing(model, loader, alpha=0, normalization=None):
                 # Load data to device
                 x, y = batch[0], batch[1]
                 real.append(y)
-                x = x.to(device).double()
-                y = y.to(device).double()
+                x = x.to(device).float()
+                y = y.to(device).float()
 
                 # ANN model prediction
                 if len(y.shape) > 2:
-                    out = model.double()(x, y.shape[1])
+                    out = model.float()(x, y.shape[1])
                 else:
-                    out = model.double()(x)
+                    out = model.float()(x)
                 pred.append(out.detach().cpu().numpy())
 
                 # MSE loss function
