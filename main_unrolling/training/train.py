@@ -167,7 +167,7 @@ def training(model, optimizer, train_loader, val_loader,
 
     # start measuring time
     start_time = time.time()
-    early_stopping = EarlyStopping(patience=patience, delta=1e-6, path=path + 'checkpoint.pt')
+    early_stopping = EarlyStopping(patience=patience, delta=1e-8, path=path + 'checkpoint.pt')
 
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):

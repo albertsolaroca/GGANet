@@ -78,18 +78,14 @@ class Dashboard:
         # Code used to export HTML
         # f.write_html('./my_HTML.html', auto_play=False)
         # create our callback function
-        def update_point(trace, points, selector, manual_override=False):
+        def update_point(trace, points, selector):
             try:
 
-                if manual_override:
-                    point_index = points
-                    correction_term = self.index_corrector[points]
-                else:
-                    point_index = points.point_inds[0]
-                    correction_term = self.index_corrector[points.point_inds[0]]
+                point_index = points.point_inds[0]
+                correction_term = self.index_corrector[point_index]
 
                 if ~np.isnan(correction_term):
-                    real_time_series = self.real_heads_pd[self.node_indexes[point_index - correction_term]]
+                    real_time_series = self.real_heads_pd[self.node_indexes[point_index] - correction_term]
                     model_time_series = self.predicted_heads_pd[self.node_indexes[point_index] - correction_term]
 
                     f.data[1].x = list(real_time_series.index)

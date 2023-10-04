@@ -15,7 +15,7 @@ networks: ['FOS_tank']
 
 
 # number of training samples to use (if < than total)
-tra_num: 800
+tra_num: 5000
 # tra_num: 2048
 # tra_num: 4096
 # tra_num: 6144
@@ -38,22 +38,26 @@ hyperParams:
         LSTM:
             hid_channels:
                 - 128
+                - 32
             num_layers:
                 - 1
+                - 2
         BaselineUnrolling:
             num_blocks:
                 - 1
+                - 2
         UnrollingModel:
             num_blocks:
                 - 1
+                - 2
 
 adamParams:
     lr: 0.0001
-    weight_decay: 0
+    weight_decay: 0.00001
 
 
 trainParams:
-    num_epochs: 10
+    num_epochs: 1000
     batch_size: 32
 
 lossParams:
