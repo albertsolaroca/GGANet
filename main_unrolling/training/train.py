@@ -88,7 +88,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
     # retrieve model device (to correctly load data if GPU)
     if device is None:
         device = next(model.parameters()).device
-
+    
     for batch in loader:
 
         if isinstance(loader, torch_geometric.loader.dataloader.DataLoader):
@@ -97,25 +97,25 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
             # Model prediction
 
-            preds = model.double()(batch)
+            preds = model.float()(batch)
 
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
             # print("Predictionshape:", preds.shape, "yshape:", batch.y.shape)
-            loss = nn.MSELoss()(preds, batch.y.to(device).double().view(-1,1))
+            loss = nn.MSELoss()(preds, batch.y.to(device).float().view(-1,1))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
             x, y = batch[0], batch[1]
-            x = x.to(device).double()
-            y = y.to(device).double()
+            x = x.to(device).float()
+            y = y.to(device).float()
 
             # Model prediction
             # If dataset is continuous then we need to pass the sequence length (y.shape[1]) to the model
             if len(y.shape) > 2:
-                preds = model.double()(x, y.shape[1])
+                preds = model.float()(x, y.shape[1])
             else:
-                preds = model.double()(x)
+                preds = model.float()(x)
             # MSE loss function
             # TODO Check how error is calculated. Ensure every iteration is penalized.
             loss = nn.MSELoss()(preds, y)
@@ -125,7 +125,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             loss *= normalization['pressure']
 
         losses.append(loss.cpu().detach())
-
+        # detach gpu if cude device is cuda:0
         # Backpropagate and update weights
         loss.backward()
         optimizer.step()
