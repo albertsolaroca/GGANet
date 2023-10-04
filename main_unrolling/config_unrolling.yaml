@@ -26,7 +26,7 @@ algorithms:
 #    - MLP
     - LSTM
     - BaselineUnrolling
-    - UnrollingModel
+#    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
@@ -57,7 +57,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 1
+    num_epochs: 1000
     batch_size: 64
 
 lossParams:
