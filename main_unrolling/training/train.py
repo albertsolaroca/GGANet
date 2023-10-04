@@ -88,7 +88,8 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
     # retrieve model device (to correctly load data if GPU)
     if device is None:
         device = next(model.parameters()).device
-    
+
+    loss_sum = 0  # Initialize a variable to accumulate losses on the GPU
     for batch in loader:
 
         if isinstance(loader, torch_geometric.loader.dataloader.DataLoader):
@@ -125,12 +126,17 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             loss *= normalization['pressure']
 
         losses.append(loss.cpu().detach())
+        # loss_sum += loss  # Accumulate loss on the GPU
         # detach gpu if cude device is cuda:0
         # Backpropagate and update weights
         loss.backward()
+        # Clip to prevent exploding gradients
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
 
+    # losses.append(loss_sum.cpu().detach())
     return np.array(losses).mean()
 
 
