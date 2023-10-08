@@ -15,18 +15,14 @@ networks: ['FOS_tank']
 
 
 # number of training samples to use (if < than total)
-tra_num: 5000
-# tra_num: 2048
-# tra_num: 4096
-# tra_num: 6144
-
+tra_num: 8000
 
 # model architectures to train
 algorithms:
 #    - MLP
-#    - LSTM
-#    - BaselineUnrolling
-    - UnrollingModel
+    - LSTM
+    - BaselineUnrolling
+#    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
@@ -42,14 +38,16 @@ hyperParams:
             num_layers:
                 - 1
                 - 2
+                - 4
         BaselineUnrolling:
             num_blocks:
                 - 1
                 - 2
+                - 4
         UnrollingModel:
             num_blocks:
                 - 1
-#                - 2
+                - 2
 
 adamParams:
     lr: 0.001
