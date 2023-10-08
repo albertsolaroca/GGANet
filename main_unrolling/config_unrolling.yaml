@@ -24,9 +24,9 @@ tra_num: 5000
 # model architectures to train
 algorithms:
 #    - MLP
-    - LSTM
-    - BaselineUnrolling
-#    - UnrollingModel
+#    - LSTM
+#    - BaselineUnrolling
+    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
@@ -49,7 +49,7 @@ hyperParams:
         UnrollingModel:
             num_blocks:
                 - 1
-                - 2
+#                - 2
 
 adamParams:
     lr: 0.001

@@ -131,7 +131,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
         # Backpropagate and update weights
         loss.backward()
         # Clip to prevent exploding gradients
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
