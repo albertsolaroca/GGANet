@@ -263,13 +263,17 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
 	'''
 
     # Setting the demand per node to a random value out of three randomly generated types of households
+    if randomized_demands:
+        for i in randomized_demands:
+            wn.add_pattern(f'demand_pattern_{i}',
+                           randomized_demands[i])
+
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
         node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 10000)) * 0.0000002)
                                                     # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if randomized_demands:
-            wn.add_pattern(f'pattern_node_{id}', randomized_demands[np.random.choice(['one_person', 'two_person', 'family'])])
-            node.demand_timeseries_list[0].pattern_name = f'pattern_node_{id}'
+            node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(np.random.choice(['one_person', 'two_person', 'family']))
 
     return None
 
@@ -375,7 +379,7 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
                 else:
                     if count > 0:
                         count -= 1
-                        wntr.network.write_inpfile(res_dict['network'], f'{path}/{network}_{10 - count}.inp')
+                        wntr.network.write_inpfile(res_dict['network'], f'{path}/{network}_{count}.inp')
                     flag = True
 
             if not flag:
@@ -430,19 +434,32 @@ def from_wntr_to_nx(wn,flows):
         for edge in wn.links():
             if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (
                     edge[1].start_node.name == v and edge[1].end_node.name == u):
-                assert isinstance(edge[1], wntr.network.elements.Pipe), "The link is not a pipe"
-                sG_WDS[u][v]['name'] = edge[1].name
-                sG_WDS[u][v]['diameter'] = edge[1].diameter
-                sG_WDS[u][v]['length'] = edge[1].length
-                sG_WDS[u][v]['roughness'] = edge[1].roughness
-                # sG_WDS[u][v]['flowrate'] = flows[edge[0]]
+
+                if sG_WDS[u][v]['type'] == 'Pipe':
+                    sG_WDS[u][v]['name'] = edge[1].name
+                    sG_WDS[u][v]['diameter'] = edge[1].diameter
+                    sG_WDS[u][v]['length'] = edge[1].length
+                    sG_WDS[u][v]['roughness'] = edge[1].roughness
+                    sG_WDS[u][v]['power'] = 0
+                elif sG_WDS[u][v]['type'] == 'Pump':
+                    # Only handling Power Pumps for now
+                    sG_WDS[u][v]['name'] = edge[1].name
+                    sG_WDS[u][v]['diameter'] = 0
+                    sG_WDS[u][v]['length'] = 0
+                    sG_WDS[u][v]['roughness'] = 0
+                    # sG_WDS[u][v]['speed'] = edge[1].speed
+                    sG_WDS[u][v]['power'] = edge[1].power
+                else:
+                    print(sG_WDS[u][v]['type'], u, v)
+                    raise Exception('Only Pipes and Pumps so far')
+                    break
 
     i = 0
     for u in sG_WDS.nodes:
         # Junctions have elevation but no base_head and are identified with a 0
         if sG_WDS.nodes[u]['type'] == 'Junction':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
-            sG_WDS.nodes[u]['type_1H'] = 0
+            sG_WDS.nodes[u]['node_type'] = 0
             # I am not sure about the value here. It seems like the demand timeseries is omitted
             # I want to generate a demand timeseries and take it into account
             sG_WDS.nodes[u]['base_demand'] = list(wn_nodes[i][1].demand_timeseries_list)[0].base_value
@@ -453,7 +470,7 @@ def from_wntr_to_nx(wn,flows):
         # Reservoirs have base_head but no elevation and are identified with a 1
         elif sG_WDS.nodes[u]['type'] == 'Reservoir':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
-            sG_WDS.nodes[u]['type_1H'] = 1
+            sG_WDS.nodes[u]['node_type'] = 1
             sG_WDS.nodes[u]['base_demand'] = 0
             sG_WDS.nodes[u]['elevation'] = 0
             sG_WDS.nodes[u]['base_head'] = wn_nodes[i][1].base_head
@@ -462,7 +479,7 @@ def from_wntr_to_nx(wn,flows):
         # Tanks have an elevation, as well as initial_level and diameter
         elif sG_WDS.nodes[u]['type'] == 'Tank':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
-            sG_WDS.nodes[u]['type_1H'] = 2
+            sG_WDS.nodes[u]['node_type'] = 2
             sG_WDS.nodes[u]['base_demand'] = 0
             sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
             sG_WDS.nodes[u]['base_head'] = 0
@@ -578,7 +595,7 @@ def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, contin
 
 
     start_time = time.time()
-    all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous, randomized_demands=randomized_demands)
+    all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous, randomized_demands=randomized_demands, count=2)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"Execution time: {execution_time:.6f} seconds\n")
