@@ -270,7 +270,7 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
 
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 10000)) * 0.0000002)
+        node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 1000)) * 0.0000015)
                                                     # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if randomized_demands:
             node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(np.random.choice(['one_person', 'two_person', 'family']))
@@ -350,7 +350,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     res_dict['flowrate'] = sim.link['flowrate'].squeeze()
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
-    sim_check = ((res_dict['pressure'][ix] > 0).all()) & (sim.error_code == None)
+    sim_check = ((res_dict['pressure'][ix] > 14).all()) & (sim.error_code == None)
     res_dict['network_name'] = network
     res_dict['network'] = wn
     return res_dict, sim, sim_check
@@ -441,14 +441,18 @@ def from_wntr_to_nx(wn,flows):
                     sG_WDS[u][v]['length'] = edge[1].length
                     sG_WDS[u][v]['roughness'] = edge[1].roughness
                     sG_WDS[u][v]['power'] = 0
+                    sG_WDS[u][v]['coeff_r'] = 0
+                    sG_WDS[u][v]['coeff_n'] = 0
+
                 elif sG_WDS[u][v]['type'] == 'Pump':
                     # Only handling Power Pumps for now
                     sG_WDS[u][v]['name'] = edge[1].name
                     sG_WDS[u][v]['diameter'] = 0
                     sG_WDS[u][v]['length'] = 0
                     sG_WDS[u][v]['roughness'] = 0
-                    # sG_WDS[u][v]['speed'] = edge[1].speed
-                    sG_WDS[u][v]['power'] = edge[1].power
+                    curve = wn.get_curve(edge[1].pump_curve_name)
+                    sG_WDS[u][v]['coeff_r'] = 0 # Coeff R = B
+                    sG_WDS[u][v]['coeff_n'] = 0 # Coeff N = C
                 else:
                     print(sG_WDS[u][v]['type'], u, v)
                     raise Exception('Only Pipes and Pumps so far')
