@@ -20,9 +20,9 @@ tra_num: 8000
 # model architectures to train
 algorithms:
 #    - MLP
-    - LSTM
-    - BaselineUnrolling
-#    - UnrollingModel
+#    - LSTM
+#    - BaselineUnrolling
+    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
@@ -47,7 +47,7 @@ hyperParams:
         UnrollingModel:
             num_blocks:
                 - 1
-                - 2
+#                - 2
 
 adamParams:
     lr: 0.001
@@ -55,7 +55,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 2000
+    num_epochs: 1000
     batch_size: 1024
 
 lossParams:

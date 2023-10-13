@@ -131,7 +131,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
         # Backpropagate and update weights
         loss.backward()
         # Clip to prevent exploding gradients
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
 
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
@@ -173,7 +173,7 @@ def training(model, optimizer, train_loader, val_loader,
 
     # start measuring time
     start_time = time.time()
-    early_stopping = EarlyStopping(patience=patience, delta=1e-6, path=path + 'checkpoint.pt')
+    early_stopping = EarlyStopping(patience=patience, delta=1e-8, path=path + 'checkpoint.pt', verbose=True)
 
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):
