@@ -14,6 +14,7 @@ import os
 from sklearn.utils import shuffle
 from pathlib import Path
 import time
+from scipy.optimize import curve_fit
 
 
 def train_val_test(Dataset, train_split=0.8, val_split=0.1, test_split=0.1):
@@ -270,7 +271,7 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
 
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        node.demand_timeseries_list[0].base_value = (np.random.choice(range(0, 1000)) * 0.0000015)
+        node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.0000012
                                                     # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if randomized_demands:
             node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(np.random.choice(['one_person', 'two_person', 'family']))
@@ -440,9 +441,9 @@ def from_wntr_to_nx(wn,flows):
                     sG_WDS[u][v]['diameter'] = edge[1].diameter
                     sG_WDS[u][v]['length'] = edge[1].length
                     sG_WDS[u][v]['roughness'] = edge[1].roughness
-                    sG_WDS[u][v]['power'] = 0
                     sG_WDS[u][v]['coeff_r'] = 0
                     sG_WDS[u][v]['coeff_n'] = 0
+                    sG_WDS[u][v]['schedule'] = []
 
                 elif sG_WDS[u][v]['type'] == 'Pump':
                     # Only handling Power Pumps for now
@@ -450,9 +451,37 @@ def from_wntr_to_nx(wn,flows):
                     sG_WDS[u][v]['diameter'] = 0
                     sG_WDS[u][v]['length'] = 0
                     sG_WDS[u][v]['roughness'] = 0
+
                     curve = wn.get_curve(edge[1].pump_curve_name)
-                    sG_WDS[u][v]['coeff_r'] = 0 # Coeff R = B
-                    sG_WDS[u][v]['coeff_n'] = 0 # Coeff N = C
+                    curve_points = curve.points
+
+                    # If there's only one point, assume a single-point curve as described
+                    if len(curve_points) == 1:
+                        head, flow = curve_points[0]
+                        # Correcting EPANET bug
+                        head = head * 1000
+                        shutoff_head = 1.33 * head
+                        max_flow = 2 * flow
+
+                        # Treat it as a three-point curve
+                        curve_points = [(0, shutoff_head), (flow, head), (max_flow, 0)]
+                    q_data = np.array([x[0] for x in curve_points])
+                    h_data = np.array([x[1] for x in curve_points])
+
+                    def pump_curve(q, A, B, C):
+                        return A - B * np.power(q, C)
+
+                    popt, _ = curve_fit(pump_curve, q_data, h_data, maxfev=10000)
+                    A, B, C = popt
+                    sG_WDS[u][v]['coeff_r'] = B # Coeff R = B
+                    sG_WDS[u][v]['coeff_n'] = C # Coeff N = C
+
+                    speed_pattern = wn.get_pattern(edge[1].speed_pattern_name)
+                    if speed_pattern is None:
+                        sG_WDS[u][v]['schedule'] = [1] * 24
+                    else:
+                        sG_WDS[u][v]['schedule'] = speed_pattern.multipliers
+
                 else:
                     print(sG_WDS[u][v]['type'], u, v)
                     raise Exception('Only Pipes and Pumps so far')
