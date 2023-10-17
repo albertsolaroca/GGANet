@@ -9,9 +9,18 @@ import torch_geometric
 import torch.optim as optim
 from tqdm import tqdm
 
-from main_unrolling.training.loss import *
-from main_unrolling.training.test import testing
-from main_unrolling.utils.visualization import *
+import sys
+import os
+
+# Get the directory one level above your script's location
+directory_above = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Append it to sys.path
+sys.path.append(directory_above)
+
+from .loss import *
+from .test import testing
+from .visualization import *
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
@@ -173,7 +182,7 @@ def training(model, optimizer, train_loader, val_loader,
 
     # start measuring time
     start_time = time.time()
-    early_stopping = EarlyStopping(patience=patience, delta=1e-8, path=path + 'checkpoint.pt', verbose=True)
+    early_stopping = EarlyStopping(patience=patience, delta=1e-8, path=path + 'checkpoint.pt', verbose=False)
 
     # torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(1, n_epochs + 1)):
