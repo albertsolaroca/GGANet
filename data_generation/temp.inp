@@ -1,55 +1,55 @@
-; Filename: C:\Uni\Thesis\Albert\GGNet\data_generation/networks//FOS_pump.inp
+; Filename: C:\Uni\Thesis\Albert\GGNet\data_generation/networks//FOS_tank.inp
 ; WNTR: 1.0.0
-; Created: 2023-10-16 12:32:12
+; Created: 2023-10-17 14:30:10
 [TITLE]
 foss_poly_1 -- Bragalli, D'Ambrosio, Lee, Lodi, Toth (2008)
 
 [JUNCTIONS]
 ;ID                      Elevation       Demand Pattern                 
- 1                              65.15          0.5136 demand_pattern_family      ;
- 2                               64.4           0.066 demand_pattern_two_person   ;
- 3                              63.35          0.6912 demand_pattern_two_person   ;
- 4                               62.5          0.7416 demand_pattern_two_person   ;
- 5                              61.24          1.1556 demand_pattern_two_person   ;
- 6                               65.4          1.1748 demand_pattern_one_person   ;
- 7                               67.9            0.27 demand_pattern_two_person   ;
- 8                               66.5          0.4356 demand_pattern_two_person   ;
- 9                                 66          0.0696 demand_pattern_family      ;
- 10                             64.17          0.7788 demand_pattern_two_person   ;
- 11                              63.7          0.6444 demand_pattern_family      ;
- 12                             62.64          0.4464 demand_pattern_family      ;
- 13                              61.9          0.4944 demand_pattern_one_person   ;
- 14                              62.6          1.0824 demand_pattern_one_person   ;
- 15                              63.5          1.0356 demand_pattern_one_person   ;
- 16                              64.3          0.0612 demand_pattern_family      ;
- 17                              65.5          0.1524 demand_pattern_one_person   ;
- 18                              64.1          0.3888 demand_pattern_one_person   ;
- 19                              62.9          1.0776 demand_pattern_two_person   ;
- 20                             62.83           0.198 demand_pattern_one_person   ;
- 21                              62.8          0.2412 demand_pattern_family      ;
- 22                              63.9          0.5208 demand_pattern_one_person   ;
- 23                              64.2           1.062 demand_pattern_one_person   ;
- 24                              67.5          1.0476 demand_pattern_family      ;
- 25                              64.4          0.9264 demand_pattern_two_person   ;
- 26                              63.4          0.0396 demand_pattern_one_person   ;
- 27                              63.9          0.0276 demand_pattern_family      ;
- 28                             65.65          0.8664 demand_pattern_two_person   ;
- 29                              64.5           0.282 demand_pattern_one_person   ;
- 30                              64.1          0.3972 demand_pattern_family      ;
- 31                              64.4          0.6972 demand_pattern_family      ;
- 32                              64.2           0.726 demand_pattern_two_person   ;
- 33                              64.6          0.0036 demand_pattern_two_person   ;
- 34                              64.7          0.9012 demand_pattern_family      ;
- 35                             65.43           0.108 demand_pattern_one_person   ;
- 36                              65.9          1.1244 demand_pattern_one_person   ;
+ 1                              65.15          1.1328 demand_pattern_family      ;
+ 2                               64.4          0.7032 demand_pattern_family      ;
+ 3                              63.35          0.3768 demand_pattern_one_person   ;
+ 4                               62.5           0.768 demand_pattern_family      ;
+ 5                              61.24          0.3912 demand_pattern_two_person   ;
+ 6                               65.4          0.5796 demand_pattern_one_person   ;
+ 7                               67.9          0.6696 demand_pattern_one_person   ;
+ 8                               66.5           0.726 demand_pattern_family      ;
+ 9                                 66          0.7836 demand_pattern_one_person   ;
+ 10                             64.17          1.0908 demand_pattern_two_person   ;
+ 11                              63.7          0.8688 demand_pattern_one_person   ;
+ 12                             62.64           1.044 demand_pattern_family      ;
+ 13                              61.9           0.726 demand_pattern_two_person   ;
+ 14                              62.6          0.1152 demand_pattern_one_person   ;
+ 15                              63.5          0.2964 demand_pattern_one_person   ;
+ 16                              64.3          0.7428 demand_pattern_family      ;
+ 17                              65.5          0.1776 demand_pattern_family      ;
+ 18                              64.1          0.1356 demand_pattern_family      ;
+ 19                              62.9          0.4548 demand_pattern_family      ;
+ 20                             62.83          0.8268 demand_pattern_two_person   ;
+ 21                              62.8          0.0456 demand_pattern_two_person   ;
+ 22                              63.9          1.1148 demand_pattern_one_person   ;
+ 23                              64.2          1.0404 demand_pattern_two_person   ;
+ 24                              67.5          0.5736 demand_pattern_family      ;
+ 25                              64.4           1.188 demand_pattern_one_person   ;
+ 26                              63.4          0.5604 demand_pattern_one_person   ;
+ 27                              63.9          1.0248 demand_pattern_two_person   ;
+ 28                             65.65          0.3432 demand_pattern_one_person   ;
+ 29                              64.5          0.6612 demand_pattern_one_person   ;
+ 30                              64.1          0.1764 demand_pattern_family      ;
+ 31                              64.4          1.0824 demand_pattern_two_person   ;
+ 32                              64.2          0.2376 demand_pattern_one_person   ;
+ 33                              64.6          0.8868 demand_pattern_one_person   ;
+ 34                              64.7          0.9516 demand_pattern_one_person   ;
+ 35                             65.43          0.0348 demand_pattern_one_person   ;
+ 36                              65.9           1.176 demand_pattern_one_person   ;
 
 [RESERVOIRS]
 ;ID                                   Head                  Pattern
- 37                                40                            ;
+ 37                               100                            ;
 
 [TANKS]
 ;ID                              Elevation           Init Level            Min Level            Max Level             Diameter           Min Volume Volume Curve         Overflow            
- 38                                70              20               0              50               5               0                                             ;
+ 38                                95              20               0              20               5               0                                             ;
 
 [PIPES]
 ;ID                   Node1                Node2                              Length             Diameter            Roughness           Minor Loss               Status
@@ -110,11 +110,11 @@ foss_poly_1 -- Bragalli, D'Ambrosio, Lee, Lodi, Toth (2008)
  55                   34                   35                            165.67            32.6             150               0                 Open   ;
  56                   30                   35                            119.97            20.4             150               0                 Open   ;
  57                   35                   36                             83.17            32.6             150               0                 Open   ;
+ 58                   37                   1                                  1           229.2             150               0                 Open   ;
  59                   38                   7                                 10             200             100               0                 Open   ;
 
 [PUMPS]
 ;ID                   Node1                Node2                Properties          
- 58                   37                   1                    HEAD     1                      ;
 
 [VALVES]
 ;ID                   Node1                Node2                            Diameter Type              Setting           Minor Loss
@@ -148,9 +148,6 @@ demand_pattern_family 0.800000 0.300000 0.340000 0.470000 0.300000 0.430000
 
 [CURVES]
 ;ID         X-Value      Y-Value     
-;PUMP: 1
- 1             40.000000    40.000000   ;
-
 
 [CONTROLS]
 
