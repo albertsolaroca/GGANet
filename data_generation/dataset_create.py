@@ -32,7 +32,7 @@ if __name__ == '__main__':
                 f'Working with {network}, network {i + 1} of {len(ordered_networks)} || size: {trials}, {ix_trials + 1} of {len(n_trials)}')
             try:
                 if continuous:
-                    randomized_demands = demand_generation.pseudogenerate_demand_patterns()
+                    randomized_demands = demand_generation.generate_demand_patterns()
                 else:
                     randomized_demands = None
 

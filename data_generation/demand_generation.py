@@ -3,7 +3,7 @@ The following example demonstrates how to import WNTR, generate a water network
 model from an INP file, simulate hydraulics, and plot simulation results on the network.
 """
 import threading
-import yaml
+
 from matplotlib import pyplot as plt
 import pysimdeum
 
@@ -51,28 +51,12 @@ def generate_demand_patterns():
         for cons in tot_avg_cons:
             file.write(f'  {cons}: {tot_avg_cons[cons]}\n')
 
-    # Reading in the yaml file above and reconstructing dictionary
-    with open('demand_patterns.yaml') as file:
-        tot_avg_cons = yaml.load(file, Loader=yaml.FullLoader)['demand_patterns']
-        print(tot_avg_cons)
-        tot_avg_cons = yaml.load(file, Loader=yaml.FullLoader)
-        print(tot_avg_cons)
-        tot_avg_cons = tot_avg_cons['demand_patterns']
-        print(tot_avg_cons)
 
-    return tot_avg_cons
-
-def pseudogenerate_demand_patterns():
-    # Reading in the yaml file above and reconstructing dictionary
-    with open('demand_patterns.yaml') as file:
-        tot_avg_cons = yaml.load(file, Loader=yaml.FullLoader)['demand_patterns']
 
 
     return tot_avg_cons
 
-
-# def plot_demand_patterns():
-    # Plot the consumption patterns
+    # # Plot the consumption patterns
     # plot_colors = ['lightblue', 'mediumblue', 'darkblue']
     # colour_index = 0
     # for cons in all_cons:
