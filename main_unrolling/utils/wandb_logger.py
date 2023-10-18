@@ -1,6 +1,7 @@
 import wandb
 import plotly.io as pio
 
+
 def log_wandb_data(config_combination, wdn, algorithm, len_tra_database,
                    len_val_database, len_tst_database, cfg, train_config,
                    loss_plot, R2_plot):
@@ -28,14 +29,11 @@ def log_wandb_data(config_combination, wdn, algorithm, len_tra_database,
                "Testing samples": len_tst_database})
 
     wandb.log({"Learning rate": cfg["adamParams"]["lr"],
-              "Weight decay": cfg["adamParams"]["weight_decay"],
-              "Number of epochs": cfg["trainParams"]["num_epochs"],
-                "Batch size": cfg["trainParams"]["batch_size"],
+               "Weight decay": cfg["adamParams"]["weight_decay"],
+               "Number of epochs": cfg["trainParams"]["num_epochs"],
+               "Batch size": cfg["trainParams"]["batch_size"],
                "Alpha loss": cfg["lossParams"]["alpha"]})
 
     wandb.log(train_config)
     wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
     wandb.log({"R2": wandb.Image(R2_plot + ".png")})
-
-
-# def log_wandb_graphs():

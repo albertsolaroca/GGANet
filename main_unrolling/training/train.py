@@ -212,8 +212,8 @@ def training(model, optimizer, train_loader, val_loader,
         if report_freq == 0:
             continue
         elif epoch % report_freq == 0:
-            train_R2 = plot_R2(model, train_loader, show=False)
-            val_R2 = plot_R2(model, val_loader, show=False)
+            train_R2 = plot_R2(model, train_loader, show=False, normalization=normalization)
+            val_R2 = plot_R2(model, val_loader, show=False, normalization=normalization)
             # test_R2 = plot_R2(model, test_loader, show=False)
             print("epoch:", epoch, "\t loss:", np.round(train_losses[-1], 2),
                   "m\t train R2:", np.round(train_R2, 4),

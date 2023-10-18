@@ -370,6 +370,7 @@ def from_graphs_to_pandas(graphs):
 
     return np.concatenate(x, axis=0), np.concatenate(y, axis=0), np.concatenate(ea, axis=0)
 
+
 # Define your LSTM model class
 class LSTM(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, num_layers=2):
@@ -417,6 +418,7 @@ class LSTM(nn.Module):
             output_seq[:, t:t + 1, :] = self.linear(lstm_output)
 
         return output_seq.to(torch.float32)
+
 
 class BaselineUnrolling(nn.Module):
     def __init__(self, num_outputs, indices, num_blocks):
@@ -467,6 +469,7 @@ class BaselineUnrolling(nn.Module):
 
         return predictions
 
+
 class UnrollingModel(nn.Module):
     def __init__(self, num_outputs, indices, num_blocks):
         super(UnrollingModel, self).__init__()
@@ -514,8 +517,10 @@ class UnrollingModel(nn.Module):
 
     def forward(self, x, num_steps=1):
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        s, h0, d, edge_features = (x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(), x[:, self.indices['diameter']].float(),
-                                   x[:, self.indices['diameter'].start:self.indices['length'].stop].float())
+        s, h0, d, edge_features = (
+        x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(),
+        x[:, self.indices['diameter']].float(),
+        x[:, self.indices['diameter'].start:self.indices['length'].stop].float())
 
         res_h0_q, res_s_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hids_q(s), self.hidh0_h(h0), self.hid_S(
             edge_features)
@@ -545,6 +550,7 @@ class UnrollingModel(nn.Module):
         # Convert the list of predictions to a tensor
         predictions = torch.stack(predictions, dim=1)
         return predictions
+
 
 # read config files
 cfg = read_config("config_unrolling.yaml")
@@ -591,6 +597,7 @@ def parse_args():
     args = argparser.parse_args()
     vars(default_config).update(vars(args))
     return
+
 
 def train(configuration):
     for ix_wdn, wdn in enumerate(all_wdn_names):
@@ -700,7 +707,8 @@ def train(configuration):
                     pd.DataFrame(data=pred.reshape(-1, n_nodes)).to_csv(
                         f'{results_folder}/{wdn}/{algorithm}/pred/{split}/{i}.csv')
 
-                log_wandb_data(combination, wdn, algorithm, len(tra_database), len(val_database), len(tst_database), cfg, train_config, loss_plot, R2_plot)
+                log_wandb_data(combination, wdn, algorithm, len(tra_database), len(val_database), len(tst_database),
+                               cfg, train_config, loss_plot, R2_plot)
                 # store results
                 results_df.loc[i, res_columns] = (losses['training'], losses['validation'], losses['testing'],
                                                   max_losses['training'], max_losses['validation'],
@@ -711,6 +719,8 @@ def train(configuration):
                                                   total_parameters, elapsed_time, test_time)
 
                 _, _, _, pred, real, time = testing(model, val_loader)
+                pred = gn.inverse_transform_array(pred, 'pressure')
+                real = gn.inverse_transform_array(real, 'pressure')
                 pred = pred.reshape(-1, n_nodes)
                 real = real.reshape(-1, n_nodes)
 
@@ -720,7 +730,8 @@ def train(configuration):
                     plt.ylabel('Head')
                     plt.xlabel('Timestep')
                     plt.legend()
-                    wandb.log({f'Node {i}': wandb.Image(plt)})
+                    names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Random Node', 36: 'Tank'}
+                    wandb.log({names[i]: wandb.Image(plt)})
                     plt.close()
 
                 wandb.finish()
@@ -731,6 +742,7 @@ def train(configuration):
                 # with open(f'{results_folder}/{wdn}/{algorithm}/model.pickle', 'wb') as handle:
                 #     torch.save(model, handle)
                 # results_df.to_csv(f'{results_folder}/{wdn}/{algorithm}/results_{algorithm}.csv')
+
 
 # Main method
 if __name__ == "__main__":
