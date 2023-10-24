@@ -332,8 +332,8 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     '''
 	This function creates a random input/output pair for a single network, after modifying it the original wds model.
 	'''
-    link_feats = ['roughness', 'diameter', 'length']
-    node_feats = ['base_demand', 'node_type', 'elevation', 'base_head']
+    link_feats = ['diameter']
+    node_feats = ['base_demand', 'node_type', 'base_head']
     res_dict = {}
     # load and alter network
     inp_file = f'{path}/{network}.inp'
@@ -363,7 +363,6 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
     """
     n_fails = 0
     dataset = []
-
 
     for i in tqdm(range(n_trials), network):
         flag = False

@@ -371,6 +371,54 @@ def from_graphs_to_pandas(graphs):
     return np.concatenate(x, axis=0), np.concatenate(y, axis=0), np.concatenate(ea, axis=0)
 
 
+class MLP(nn.Module):
+    def __init__(self, num_outputs, hid_channels, indices, num_layers=6):
+        super(MLP, self).__init__()
+        torch.manual_seed(42)
+        self.hid_channels = hid_channels
+        self.indices = indices
+
+        self.total_input_length = indices[list(indices.keys())[-1]].stop
+
+        layers = [Linear(self.total_input_length, hid_channels),
+                  nn.ReLU()]
+
+        for l in range(num_layers - 1):
+            layers += [Linear(hid_channels, hid_channels),
+                       nn.ReLU()]
+
+        layers += [Linear(hid_channels, num_outputs)]
+
+        after_layers = [Linear(num_outputs, hid_channels),
+                        nn.ReLU()]
+
+        for l in range(num_layers - 1):
+            after_layers += [Linear(hid_channels, hid_channels),
+                             nn.ReLU()]
+
+        after_layers += [Linear(hid_channels, num_outputs),
+                         nn.ReLU()]
+
+        self.start = nn.Sequential(*layers)
+        self.main = nn.Sequential(*after_layers)
+
+    def forward(self, x, num_steps=1):
+
+        predictions = []
+
+        x = self.start(x)
+        predictions.append(x)
+        for step in range(num_steps - 1):
+            x = self.main(x)
+
+            predictions.append(x)
+
+        # Convert the list of predictions to a tensor
+        predictions = torch.stack(predictions, dim=1)
+
+        return predictions
+
+
 # Define your LSTM model class
 class LSTM(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, num_layers=2):
@@ -503,8 +551,8 @@ class UnrollingModel(nn.Module):
             self.hid_hf.append(Sequential(Linear(self.num_heads, self.num_flows), nn.PReLU()))
             self.hid_fh.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
             self.resq.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
-            self.hidD_h.append(Sequential(Linear(self.num_flows, self.num_heads)))
-            self.hidA_q.append(Sequential(Linear(self.num_flows, self.num_flows), nn.ReLU()))
+            self.hidA_q.append(Sequential(Linear(self.num_flows, self.num_flows)))
+            self.hidD_h.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
         # init.xavier_uniform_(self.hid_hf[i][0].weight)
         # init.xavier_uniform_(self.hid_fh[i][0].weight)
         # init.xavier_uniform_(self.resq[i][0].weight)
@@ -531,8 +579,8 @@ class UnrollingModel(nn.Module):
         predictions = []
         for step in range(num_steps):
             for i in range(self.num_blocks):
-                D_h = self.hidD_h[i](torch.mul(q, res_S_q))  # 4.16
-                A_q = self.hidA_q[i](D_h)  # 4.17
+                A_q = self.hidA_q[i](torch.mul(q, res_S_q))  # 4.16
+                D_h = self.hidD_h[i](A_q)  # 4.17
                 hid_x = torch.mul(A_q,
                                   torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))  # 4.18 (inside parentheses)
                 h = self.hid_fh[i](hid_x)  # 4.18
@@ -575,6 +623,8 @@ alpha = cfg['lossParams']['alpha']
 patience = cfg['earlyStopping']['patience']
 divisor = cfg['earlyStopping']['divisor']
 epoch_frequency = cfg['earlyStopping']['epoch_frequency']
+learning_rate = cfg['adamParams']['lr']
+weight_decay = cfg['adamParams']['weight_decay']
 
 res_columns = ['train_loss', 'valid_loss', 'test_loss', 'max_train_loss', 'max_valid_loss', 'max_test_loss',
                'min_train_loss', 'min_valid_loss', 'min_test_loss', 'r2_train', 'r2_valid',
@@ -582,6 +632,24 @@ res_columns = ['train_loss', 'valid_loss', 'test_loss', 'max_train_loss', 'max_v
 
 default_config = SimpleNamespace(batch_size=batch_size, num_epochs=num_epochs, alpha=alpha,
                                  patience=patience, divisor=divisor, epoch_frequency=epoch_frequency)
+
+
+def save_response_graphs_in_ML_tracker(swmm_heads_pd, predicted_heads_pd, name_event, node):
+    wandb.log({"Node " + str(node): wandb.plot.line_series(
+
+        xs=[range(0,24), range(0,24)],
+
+        ys=[swmm_heads_pd[0:24, node].numpy(), predicted_heads_pd[0:24, node].numpy()],
+
+        keys=["Real", "Predicted"],
+
+        title="Event: " + name_event + "- Head comparison at node " + str(node),
+
+        xname="Time steps", yname="Head (m)",
+
+        )
+    })
+
 
 
 def parse_args():
@@ -594,6 +662,8 @@ def parse_args():
     argparser.add_argument('--divisor', type=float, default=default_config.divisor, help='Divisor')
     argparser.add_argument('--epoch_frequency', type=int, default=default_config.epoch_frequency,
                            help='Epoch frequency')
+    argparser.add_argument('--learning_rate', type=float, default=learning_rate, help='Learning Rate')
+    argparser.add_argument('--weight_decay', type=float, default=weight_decay, help='Weight Decay')
     args = argparser.parse_args()
     vars(default_config).update(vars(args))
     return
@@ -605,7 +675,7 @@ def train(configuration):
 
         # retrieve wntr data
         tra_database, val_database, tst_database = load_raw_dataset(wdn, data_folder)
-        # reduce  ning data
+        # reduce training data
         # tra_database = tra_database[:int(len(tra_database)*cfg['tra_prc'])]
         if cfg['tra_num'] < len(tra_database):
             tra_database = tra_database[:cfg['tra_num']]
@@ -657,8 +727,10 @@ def train(configuration):
                                                  columns=list(res_columns))], axis=1)
 
             for i, combination in enumerate(all_combinations):
-                wandb.init(project="unrolling-epanet-sweeps", entity="mertz")
+                wandb.init()
                 print(f'{algorithm}: training combination {i + 1} of {len(all_combinations)}\n')
+                # update wandb config
+                wandb.config.update(combination)
                 combination['indices'] = indices
                 combination['num_outputs'] = n_nodes
 
@@ -672,7 +744,8 @@ def train(configuration):
 
                 # model optimizer
 
-                optimizer = optim.Adam(params=model.parameters(), betas=(0.9, 0.999), **cfg['adamParams'])
+                optimizer = optim.Adam(params=model.parameters(), betas=(0.9, 0.999),
+                                       lr=configuration.learning_rate, weight_decay=configuration.weight_decay)
 
                 # training
                 patience = configuration.patience
@@ -707,8 +780,9 @@ def train(configuration):
                     pd.DataFrame(data=pred.reshape(-1, n_nodes)).to_csv(
                         f'{results_folder}/{wdn}/{algorithm}/pred/{split}/{i}.csv')
 
-                log_wandb_data(combination, wdn, algorithm, len(tra_database), len(val_database), len(tst_database),
-                               cfg, train_config, loss_plot, R2_plot)
+                # log_wandb_data(combination, wdn, algorithm, len(tra_database), len(val_database), len(tst_database),
+                #                cfg, train_config, loss_plot, R2_plot)
+
                 # store results
                 results_df.loc[i, res_columns] = (losses['training'], losses['validation'], losses['testing'],
                                                   max_losses['training'], max_losses['validation'],
@@ -725,14 +799,9 @@ def train(configuration):
                 real = real.reshape(-1, n_nodes)
 
                 for i in [0, 1, 7, 36]:
-                    plt.plot(real[0:24, i], label="Real")
-                    plt.plot(pred[0:24, i], label="Predicted")
-                    plt.ylabel('Head')
-                    plt.xlabel('Timestep')
-                    plt.legend()
+
                     names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Random Node', 36: 'Tank'}
-                    wandb.log({names[i]: wandb.Image(plt)})
-                    plt.close()
+                    save_response_graphs_in_ML_tracker(real, pred, names[i], i)
 
                 wandb.finish()
                 # save graph normalizer
