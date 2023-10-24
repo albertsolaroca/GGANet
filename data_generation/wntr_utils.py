@@ -80,7 +80,7 @@ def run_wntr_simulation(wn, headloss='H-W', continuous=False):
     wn.options.hydraulic.inpfile_units = "LPS"
 
     if continuous:
-        wn.options.time.duration = 86400 # 24 * 3600
+        wn.options.time.duration = 86400  # 24 * 3600
         wn.options.time.hydraulic_timestep = 3600
         wn.options.time.quality_timestep = 3600
         wn.options.time.report_start = 0
@@ -272,9 +272,10 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
         node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.0000012
-                                                    # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
+        # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if randomized_demands:
-            node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(np.random.choice(['one_person', 'two_person', 'family']))
+            node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(
+                np.random.choice(['one_person', 'two_person', 'family']))
 
     return None
 
@@ -357,7 +358,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     return res_dict, sim, sim_check
 
 
-def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None, count=10):
+def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None, count=2):
     """
     This function creates a dataset of n_trials length for a specific network
     """
@@ -419,7 +420,7 @@ def plot_dataset_attribute_distribution(dataset, attribute, figsize=(20, 5), bin
     return df_attr
 
 
-def from_wntr_to_nx(wn,flows):
+def from_wntr_to_nx(wn, flows):
     '''
 	This function converts a WNTR object to networkx
 	'''
@@ -438,8 +439,8 @@ def from_wntr_to_nx(wn,flows):
                 if sG_WDS[u][v]['type'] == 'Pipe':
                     sG_WDS[u][v]['name'] = edge[1].name
                     sG_WDS[u][v]['diameter'] = edge[1].diameter
-                    sG_WDS[u][v]['length'] = edge[1].length
-                    sG_WDS[u][v]['roughness'] = edge[1].roughness
+                    # sG_WDS[u][v]['length'] = edge[1].length
+                    # sG_WDS[u][v]['roughness'] = edge[1].roughness
                     sG_WDS[u][v]['coeff_r'] = 0
                     sG_WDS[u][v]['coeff_n'] = 0
                     sG_WDS[u][v]['schedule'] = []
@@ -448,8 +449,8 @@ def from_wntr_to_nx(wn,flows):
                     # Only handling Power Pumps for now
                     sG_WDS[u][v]['name'] = edge[1].name
                     sG_WDS[u][v]['diameter'] = 0
-                    sG_WDS[u][v]['length'] = 0
-                    sG_WDS[u][v]['roughness'] = 0
+                    # sG_WDS[u][v]['length'] = 0
+                    # sG_WDS[u][v]['roughness'] = 0
 
                     curve = wn.get_curve(edge[1].pump_curve_name)
                     curve_points = curve.points
@@ -472,8 +473,8 @@ def from_wntr_to_nx(wn,flows):
 
                     popt, _ = curve_fit(pump_curve, q_data, h_data, maxfev=10000)
                     A, B, C = popt
-                    sG_WDS[u][v]['coeff_r'] = B # Coeff R = B
-                    sG_WDS[u][v]['coeff_n'] = C # Coeff N = C
+                    sG_WDS[u][v]['coeff_r'] = B  # Coeff R = B
+                    sG_WDS[u][v]['coeff_n'] = C  # Coeff N = C
 
                     speed_pattern = wn.get_pattern(edge[1].speed_pattern_name)
                     if speed_pattern is None:
@@ -539,7 +540,7 @@ def convert_to_pyg(dataset, continuous):
         wn = sample['network']
         flows = sample['flowrate']
         # create PyG Data 
-        pyg_data = convert.from_networkx(from_wntr_to_nx(wn,flows))
+        pyg_data = convert.from_networkx(from_wntr_to_nx(wn, flows))
 
         # Add network name
         pyg_data.name = sample['network_name']
@@ -556,8 +557,10 @@ def convert_to_pyg(dataset, continuous):
         # convert to float where needed
         pyg_data.base_demand = pyg_data.base_demand.float()
         pyg_data.diameter = pyg_data.diameter.float()
-        pyg_data.roughness = pyg_data.roughness.float()
-        # I believe giving the flowrate is wrong
+        # pyg_data.roughness = pyg_data.roughness.float()
+        # pyg_data.length = pyg_data.length.float()
+
+        # I believe giving the flowrate is not required
         # pyg_data.flowrate = pyg_data.flowrate.float()
 
         all_pyg_data.append(pyg_data)
@@ -583,7 +586,7 @@ def save_database(database, names, size, out_path):
         name = names + [str(size)]
         name = '_'.join(name)
     elif isinstance(names, str):
-        name = names #+ '_' + str(size)
+        name = names  # + '_' + str(size)
 
     Path(out_path).mkdir(parents=True, exist_ok=True)
 
@@ -625,9 +628,9 @@ def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, contin
     # create dataset
     all_data = []
 
-
     start_time = time.time()
-    all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous, randomized_demands=randomized_demands, count=2)
+    all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous,
+                               randomized_demands=randomized_demands, count=2)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"Execution time: {execution_time:.6f} seconds\n")

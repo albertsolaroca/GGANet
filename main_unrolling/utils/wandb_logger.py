@@ -37,3 +37,19 @@ def log_wandb_data(config_combination, wdn, algorithm, len_tra_database,
     wandb.log(train_config)
     wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
     wandb.log({"R2": wandb.Image(R2_plot + ".png")})
+
+def save_response_graphs_in_ML_tracker(swmm_heads_pd, predicted_heads_pd, name_event, node):
+    wandb.log({"Head timeseries at node " + str(node): wandb.plot.line_series(
+
+        xs=[range(0,24), range(0,24)],
+
+        ys=[swmm_heads_pd[0:24, node].numpy(), predicted_heads_pd[0:24, node].numpy()],
+
+        keys=["Real", "Predicted"],
+
+        title="Event: " + name_event + "- Head comparison at node " + str(node),
+
+        xname="Time steps",
+
+        )
+    })
