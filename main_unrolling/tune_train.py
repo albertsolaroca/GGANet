@@ -109,12 +109,12 @@ def train(configuration):
                 print('Check', tra_database[4468].pressure.mean())
 
         # get GRAPH datasets
-        # later on we should change this and use normal scalers from scikit (something is off here)
+        # later on we should change this and use normal scalers from scikit
         tra_dataset, A12_bar = create_dataset(tra_database)
-
+        checkpoint = tra_dataset[0]['x'][0]
         gn = GraphNormalizer()
         gn = gn.fit(tra_dataset)
-        # The normalization messed with the 1H_type since we want unique IDs
+
         tra_dataset, _ = create_dataset(tra_database, normalizer=gn)
         val_dataset, _ = create_dataset(val_database, normalizer=gn)
         tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
@@ -148,13 +148,15 @@ def train(configuration):
                                                  columns=list(res_columns))], axis=1)
 
             for i, combination in enumerate(all_combinations):
-                run = wandb.init(reinit=True, name=wdn + "_" + algorithm + "_" + str(i))
+                # wandb.init(reinit=True, name=wdn + "_" + algorithm + "_" + str(i))
                 print(f'{algorithm}: training combination {i + 1} of {len(all_combinations)}\n')
 
                 # update wandb config
-                wandb.config.update(combination)
-                wandb.config.update({'model': algorithm})
+                # wandb.config.update(combination)
+                # wandb.config.update({'model': algorithm})
+
                 combination['indices'] = indices
+                print(indices)
                 combination['num_outputs'] = n_nodes
 
                 # model creation
@@ -185,8 +187,8 @@ def train(configuration):
                 R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2/{i}', normalization=gn)[1]
 
                 # Logging plots on WandB
-                wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
-                wandb.log({"R2": wandb.Image(R2_plot + ".png")})
+                # wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
+                # wandb.log({"R2": wandb.Image(R2_plot + ".png")})
                 # store training history and model
                 pd.DataFrame(data=np.array([tra_losses, val_losses]).T).to_csv(
                     f'{results_folder}/{wdn}/{algorithm}/hist/{i}.csv')
@@ -229,7 +231,7 @@ def train(configuration):
                     names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Random Node', 36: 'Tank'}
                     save_response_graphs_in_ML_tracker(real, pred, names[i], i)
 
-                run.finish()
+                # wandb.finish()
                 # save graph normalizer
                 # with open(f'{results_folder}/{wdn}/{algorithm}/gn.pickle', 'wb') as handle:
                 #     pickle.dump(gn, handle, protocol=pickle.HIGHEST_PROTOCOL)

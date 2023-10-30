@@ -5,6 +5,29 @@ from torch import nn
 from torch.nn import Linear, Sequential
 
 
+class Dummy(nn.Module):
+    def __init__(self, num_outputs, indices, something):
+        super(Dummy, self).__init__()
+        self.output_size = num_outputs
+        self.input_size = indices[list(indices.keys())[-1]].stop
+        self.layer = nn.Linear(self.input_size, self.output_size)
+        self.avg = None
+        self.count = 0
+
+    def forward(self, x, num_steps=1):
+        x = torch.mean(x, dim=1)
+        output = self.layer(x)
+        if self.training:
+            if self.avg is None:
+                self.avg = output.detach()
+            else:
+                self.avg = (self.avg * self.count + output.detach()) / (self.count + 1)
+            self.count += 1
+        else:
+            output = self.avg
+        return output
+
+
 class MLP(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, num_layers=6):
         super(MLP, self).__init__()
@@ -23,6 +46,44 @@ class MLP(nn.Module):
 
         layers += [Linear(hid_channels, num_outputs)]
 
+        self.main = nn.Sequential(*layers)
+
+    def forward(self, x, num_steps=1):
+
+        predictions = []
+        save = x[0, self.indices['demand_timeseries']]
+        x = self.main(x)
+        predictions.append(x)
+        for step in range(num_steps - 1):
+            x = self.main(x)
+
+            predictions.append(x)
+
+        # Convert the list of predictions to a tensor
+        predictions = torch.stack(predictions, dim=1)
+
+        return predictions
+
+
+class MLPOld(nn.Module):
+    def __init__(self, num_outputs, hid_channels, indices, num_layers=6):
+        super(MLP, self).__init__()
+        torch.manual_seed(42)
+        self.hid_channels = hid_channels
+        self.indices = indices
+
+        self.total_input_length = indices[list(indices.keys())[-1]].stop
+
+        layers = [Linear(self.total_input_length, hid_channels),
+                  nn.ReLU()]
+
+        for l in range(num_layers - 1):
+            layers += [Linear(hid_channels, hid_channels),
+                       nn.ReLU()]
+
+        layers += [Linear(hid_channels, num_outputs)]
+
+        # Add input of previous one and deamdn timeseries
         after_layers = [Linear(num_outputs, hid_channels),
                         nn.ReLU()]
 
@@ -101,6 +162,7 @@ class LSTM(nn.Module):
 
         return output_seq.to(torch.float32)
 
+
 class BaselineUnrolling(nn.Module):
     def __init__(self, num_outputs, indices, num_blocks):
         super(BaselineUnrolling, self).__init__()
@@ -148,6 +210,7 @@ class BaselineUnrolling(nn.Module):
 
         return predictions
 
+
 class UnrollingModel(nn.Module):
     def __init__(self, num_outputs, indices, num_blocks):
         super(UnrollingModel, self).__init__()
@@ -159,11 +222,11 @@ class UnrollingModel(nn.Module):
         self.num_blocks = num_blocks
 
         self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
-        self.hids_q = Linear(self.num_heads, self.num_flows)  #4.6/4.10
-        self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  #4.7/4.11
-        self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  #4.8/4.12
+        self.hids_q = Linear(self.num_heads, self.num_flows)  # 4.6/4.10
+        self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  # 4.7/4.11
+        self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  # 4.8/4.12
         self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows),
-                                nn.ReLU())  #4.9/4.13
+                                nn.ReLU())  # 4.9/4.13
 
         # init.xavier_uniform_(self.hid_S[0].weight)
         # init.xavier_uniform_(self.hidq0_h.weight)
@@ -195,8 +258,10 @@ class UnrollingModel(nn.Module):
 
     def forward(self, x, num_steps=1):
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        s, h0, d, edge_features = (x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(),
-                                   x[:, self.indices['diameter']].float(), x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
+        s, h0, d, edge_features = (
+        x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(),
+        x[:, self.indices['diameter']].float(),
+        x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
 
         res_h0_q, res_s_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hids_q(s), self.hidh0_h(h0), self.hid_S(
             edge_features)
@@ -207,7 +272,7 @@ class UnrollingModel(nn.Module):
         predictions = []
         for step in range(num_steps):
             for i in range(self.num_blocks):
-                A_q = self.hidA_q[i](torch.mul(q, res_S_q))  #4.16
+                A_q = self.hidA_q[i](torch.mul(q, res_S_q))  # 4.16
                 D_h = self.hidD_h[i](A_q)  # 4.17
                 hid_x = torch.mul(A_q,
                                   torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))  # 4.18 (inside parentheses)

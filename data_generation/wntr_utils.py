@@ -493,18 +493,25 @@ def from_wntr_to_nx(wn, flows):
         if sG_WDS.nodes[u]['type'] == 'Junction':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 0
-            # I am not sure about the value here. It seems like the demand timeseries is omitted
-            # I want to generate a demand timeseries and take it into account
-            sG_WDS.nodes[u]['base_demand'] = list(wn_nodes[i][1].demand_timeseries_list)[0].base_value
             sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
             sG_WDS.nodes[u]['base_head'] = 0
             sG_WDS.nodes[u]['initial_level'] = 0
             sG_WDS.nodes[u]['node_diameter'] = 0
+
+            pattern_name = wn_nodes[i][1].demand_timeseries_list.to_list()[0]['pattern_name']
+
+            multipliers = wn.get_pattern(pattern_name).multipliers
+            # Not sure about the multiplicatiobn below. Shouldn't really matter anyway
+            value = wn_nodes[i][1].demand_timeseries_list[0].base_value * 1000
+            mul_val = multipliers * value
+            sG_WDS.nodes[u]['demand_timeseries'] = mul_val
+
+
         # Reservoirs have base_head but no elevation and are identified with a 1
         elif sG_WDS.nodes[u]['type'] == 'Reservoir':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 1
-            sG_WDS.nodes[u]['base_demand'] = 0
+            sG_WDS.nodes[u]['demand_timeseries'] = np.array([0] * 24)
             sG_WDS.nodes[u]['elevation'] = 0
             sG_WDS.nodes[u]['base_head'] = wn_nodes[i][1].base_head
             sG_WDS.nodes[u]['initial_level'] = 0
@@ -513,7 +520,7 @@ def from_wntr_to_nx(wn, flows):
         elif sG_WDS.nodes[u]['type'] == 'Tank':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 2
-            sG_WDS.nodes[u]['base_demand'] = 0
+            sG_WDS.nodes[u]['demand_timeseries'] = np.array([0] * 24)
             sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
             sG_WDS.nodes[u]['base_head'] = 0
             sG_WDS.nodes[u]['initial_level'] = wn_nodes[i][1].init_level
@@ -551,12 +558,13 @@ def convert_to_pyg(dataset, continuous):
             press_shape = sample['pressure'].shape
             press_reshaped = sample['pressure'].values.reshape(press_shape[0], press_shape[1])
             pyg_data.pressure = torch.tensor(press_reshaped)
+            pyg_data.demand_timeseries = torch.tensor(sample['demand_timeseries'].values)
         else:
             pyg_data.pressure = torch.tensor(sample['pressure'])
 
         # convert to float where needed
-        pyg_data.base_demand = pyg_data.base_demand.float()
         pyg_data.diameter = pyg_data.diameter.float()
+        print(pyg_data.demand_timeseries)
         # pyg_data.roughness = pyg_data.roughness.float()
         # pyg_data.length = pyg_data.length.float()
 

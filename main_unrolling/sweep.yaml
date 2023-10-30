@@ -19,16 +19,12 @@ parameters:
   batch_size:
     values: [32, 64, 128, 256, 512, 1024]
   learning_rate:
-    distribution: uniform
-    min: 0.00001
-    max: 0.01
+    values: [0.001, 0.0001, 0.00001]
   weight_decay:
-    distribution: uniform
-    min: 0.000001
-    max: 0.01
-#  hidden_channels:
-#    values: [32, 64, 128, 256, 512, 1024]
-#  num_layers:
-#    values: [1, 2, 3, 4, 5, 6, 7, 8]
-#  algorithm:
-#    values: ['MLP', 'LSTM', 'BaselineUnrolling']
+    values: [0.01, 0.001, 0.0001, 0.00001]
+  hidden_channels:
+    values: [32, 64, 128, 256, 512]
+  num_layers:
+    values: [1, 2, 4, 8]
+  algorithm:
+    values: ['MLP', 'LSTM', 'BaselineUnrolling']

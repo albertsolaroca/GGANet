@@ -9,9 +9,9 @@ import torch_geometric
 from torch_geometric.utils import to_networkx
 
 HEAD_INDEX = 0  # Elevation + base head + initial level
-BASEDEMAND_INDEX = 1
-NODE_DIAMETER_INDEX = 2  # Needed for tanks
-TYPE_INDEX = 3
+NODE_DIAMETER_INDEX = 1  # Needed for tanks
+TYPE_INDEX = 2
+DEMAND_TIMESERIES = slice(3, 27)
 # The following three indexes describe edges in the edge_attr torch vector
 DIAMETER_INDEX = 0
 LENGTH_INDEX = 1
@@ -59,15 +59,16 @@ def create_dataset(database, normalizer=None, output='pressure'):
         graph = torch_geometric.data.Data()
 
         # Node attributes
-        # min_elevation = min(i.elevation[i.type_1H == 0])
 
         # The head below is junctions plus reservoirs (plus tanks when implemented)
         head = i.pressure + i.base_head + i.elevation
         # type_1H is equal to 1 when the node is a reservoir and 2 when it's a tank
 
         # We want to make the tuple that constructs a node of any type
-        graph.x = torch.stack(
-            (i.elevation + i.base_head + i.initial_level, i.base_demand, i.node_diameter, i.node_type), dim=1).float()
+        network_characteristics = torch.stack(
+            (i.elevation + i.base_head + i.initial_level, i.node_diameter, i.node_type), dim=1).float()
+        total_input = torch.cat((network_characteristics, i.demand_timeseries), dim=1).float()
+        graph.x = total_input
 
         # Position and ID
         graph.pos = i.pos
@@ -107,8 +108,7 @@ def create_dataset(database, normalizer=None, output='pressure'):
     return graphs, A12
 
 
-def create_dataset_MLP_from_graphs(graphs, features=['nodal_demands', 'base_heads', 'diameter',
-                                                     'nodal_diameters'], no_res_out=True):
+def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', 'demand_timeseries'], no_res_out=True):
     # index edges to avoid duplicates: this considers all graphs to be UNDIRECTED!
     ix_edge = graphs[0].edge_index.numpy().T
     ix_edge = (ix_edge[:, 0] < ix_edge[:, 1])
@@ -130,15 +130,16 @@ def create_dataset_MLP_from_graphs(graphs, features=['nodal_demands', 'base_head
             elif feature == 'length':
                 # remove reservoirs
                 x_ = item.edge_attr[ix_edge, LENGTH_INDEX]
-            elif feature == 'nodal_demands':
+            elif feature == 'demand_timeseries':
                 # remove reservoirs
-                x_ = item.x[ix_junct, BASEDEMAND_INDEX]
+                x_ = item.x[ix_junct, DEMAND_TIMESERIES]
             elif feature == 'nodal_diameters':
                 # Only get diameters for
                 x_ = item.x[ix_tank, NODE_DIAMETER_INDEX]
             elif feature == 'base_heads':
                 # filter below on ix_res or ix_tank
                 ix_res_or_tank = np.logical_or(ix_res, ix_tank)
+
                 x_ = item.x[ix_res_or_tank, HEAD_INDEX]
             else:
                 raise ValueError(f'Feature {feature} not supported.')

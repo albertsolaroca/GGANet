@@ -47,7 +47,7 @@ class PowerLogTransformer(BaseEstimator, TransformerMixin):
 
 
 class GraphNormalizer:
-    def __init__(self, x_feat_names=['head', 'base_demand', 'node_diameter'],
+    def __init__(self, x_feat_names=['head', 'diameter', 'type', 'demand_timeseries'],
                  ea_feat_names=['diameter'], output='pressure'):
         # store
         self.x_feat_names = x_feat_names
@@ -57,7 +57,7 @@ class GraphNormalizer:
         # create separate scaler for each feature (can be improved, e.g., you can fit a scaler for multiple columns)
         self.scalers = {}
         for feat in self.x_feat_names:
-            if feat == 'elevation':
+            if feat == 'head':
                 self.scalers[feat] = PowerLogTransformer(log_transform=True, reverse=False)
             else:
                 self.scalers[feat] = MinMaxScaler()
@@ -88,8 +88,9 @@ class GraphNormalizer:
         '''
         graph = graph.clone()
         for ix, feat in enumerate(self.x_feat_names):
-            temp = graph.x[:, ix].numpy().reshape(-1, 1)
-            graph.x[:, ix] = torch.tensor(self.scalers[feat].transform(temp).reshape(-1))
+            if feat != 'type' and feat != 'demand_timeseries':
+                temp = graph.x[:, ix].numpy().reshape(-1, 1)
+                graph.x[:, ix] = torch.tensor(self.scalers[feat].transform(temp).reshape(-1))
         for ix, feat in enumerate(self.ea_feat_names):
             temp = graph.edge_attr[:, ix].numpy().reshape(-1, 1)
             graph.edge_attr[:, ix] = torch.tensor(self.scalers[feat].transform(temp).reshape(-1))
