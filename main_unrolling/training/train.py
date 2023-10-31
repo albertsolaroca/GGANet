@@ -22,6 +22,7 @@ from .loss import *
 from .test import testing
 from .visualization import *
 
+
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
 
@@ -75,6 +76,7 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
+
 def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=None):
     '''
     Function that trains a model for one iteration
@@ -112,7 +114,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
             # print("Predictionshape:", preds.shape, "yshape:", batch.y.shape)
-            loss = nn.MSELoss()(preds, batch.y.to(device).float().view(-1,1))
+            loss = nn.MSELoss()(preds, batch.y.to(device).float().view(-1, 1))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
@@ -151,7 +153,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
 def training(model, optimizer, train_loader, val_loader,
              n_epochs, patience=10, report_freq=10, alpha=0, lr_rate=10, lr_epoch=50, normalization=None,
-             device=None, path = None):
+             device=None, path=None):
     '''
     Training function which returns the training and validation losses over the epochs
     Learning rate scheduler and early stopping routines working correctly

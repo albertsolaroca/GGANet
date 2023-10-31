@@ -80,7 +80,7 @@ def run_wntr_simulation(wn, headloss='H-W', continuous=False):
     wn.options.hydraulic.inpfile_units = "LPS"
 
     if continuous:
-        wn.options.time.duration = 86400  # 24 * 3600
+        wn.options.time.duration = 82800  # 24 * 3600
         wn.options.time.hydraulic_timestep = 3600
         wn.options.time.quality_timestep = 3600
         wn.options.time.report_start = 0
@@ -504,14 +504,14 @@ def from_wntr_to_nx(wn, flows):
             # Not sure about the multiplicatiobn below. Shouldn't really matter anyway
             value = wn_nodes[i][1].demand_timeseries_list[0].base_value * 1000
             mul_val = multipliers * value
-            sG_WDS.nodes[u]['demand_timeseries'] = mul_val
+            sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(mul_val)
 
 
         # Reservoirs have base_head but no elevation and are identified with a 1
         elif sG_WDS.nodes[u]['type'] == 'Reservoir':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 1
-            sG_WDS.nodes[u]['demand_timeseries'] = np.array([0] * 24)
+            sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(np.array([0] * 24))
             sG_WDS.nodes[u]['elevation'] = 0
             sG_WDS.nodes[u]['base_head'] = wn_nodes[i][1].base_head
             sG_WDS.nodes[u]['initial_level'] = 0
@@ -520,7 +520,7 @@ def from_wntr_to_nx(wn, flows):
         elif sG_WDS.nodes[u]['type'] == 'Tank':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 2
-            sG_WDS.nodes[u]['demand_timeseries'] = np.array([0] * 24)
+            sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(np.array([0] * 24))
             sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
             sG_WDS.nodes[u]['base_head'] = 0
             sG_WDS.nodes[u]['initial_level'] = wn_nodes[i][1].init_level
@@ -546,7 +546,7 @@ def convert_to_pyg(dataset, continuous):
     for sample in dataset:
         wn = sample['network']
         flows = sample['flowrate']
-        # create PyG Data 
+        # create PyG Data
         pyg_data = convert.from_networkx(from_wntr_to_nx(wn, flows))
 
         # Add network name
@@ -558,13 +558,14 @@ def convert_to_pyg(dataset, continuous):
             press_shape = sample['pressure'].shape
             press_reshaped = sample['pressure'].values.reshape(press_shape[0], press_shape[1])
             pyg_data.pressure = torch.tensor(press_reshaped)
-            pyg_data.demand_timeseries = torch.tensor(sample['demand_timeseries'].values)
+            # We want to transpose the time series but perhaps we can do it later
+            # pyg_data.demand_timeseries = pyg_data.demand_timeseries.transpose(0, 1).float()
         else:
             pyg_data.pressure = torch.tensor(sample['pressure'])
 
         # convert to float where needed
         pyg_data.diameter = pyg_data.diameter.float()
-        print(pyg_data.demand_timeseries)
+
         # pyg_data.roughness = pyg_data.roughness.float()
         # pyg_data.length = pyg_data.length.float()
 
@@ -638,7 +639,7 @@ def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, contin
 
     start_time = time.time()
     all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous,
-                               randomized_demands=randomized_demands, count=2)
+                               randomized_demands=randomized_demands, count=10)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"Execution time: {execution_time:.6f} seconds\n")

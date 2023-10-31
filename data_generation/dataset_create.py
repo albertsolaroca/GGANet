@@ -27,6 +27,8 @@ if __name__ == '__main__':
 
     for i, network in enumerate(ordered_networks):
         out_path = os.getcwd() + '\\datasets\\'
+
+
         for ix_trials, trials in enumerate(n_trials):
             print(
                 f'Working with {network}, network {i + 1} of {len(ordered_networks)} || size: {trials}, {ix_trials + 1} of {len(n_trials)}')

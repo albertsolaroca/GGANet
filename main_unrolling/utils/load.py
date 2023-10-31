@@ -152,7 +152,12 @@ def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', '
         if ix_feat == 0:
             X = x.reshape(len(graphs), -1)
         else:
-            X = torch.cat((X, x.reshape(len(graphs), -1)), dim=1)
+            if feature == "demand_timeseries":
+                x = x.transpose(0, 1)
+                check = x.reshape(len(graphs), -1)
+                X = torch.cat((X, x.reshape(len(graphs), -1)), dim=1)
+            else:
+                X = torch.cat((X, x.reshape(len(graphs), -1)), dim=1)
 
         if prev_feature:
             indices[feature] = slice(indices[prev_feature].stop, X.shape[1], 1)

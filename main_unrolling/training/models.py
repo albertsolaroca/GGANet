@@ -27,15 +27,17 @@ class Dummy(nn.Module):
             output = self.avg
         return output
 
-
-class MLP(nn.Module):
-    def __init__(self, num_outputs, hid_channels, indices, num_layers=6):
-        super(MLP, self).__init__()
+class MLPDemandsOnly(nn.Module):
+    def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
+        super(MLPDemandsOnly, self).__init__()
         torch.manual_seed(42)
         self.hid_channels = hid_channels
         self.indices = indices
+        self.demand_nodes = junctions
 
-        self.total_input_length = indices[list(indices.keys())[-1]].stop
+        self.demand_start = indices['demand_timeseries'].start
+
+        self.total_input_length = self.demand_nodes
 
         layers = [Linear(self.total_input_length, hid_channels),
                   nn.ReLU()]
@@ -51,13 +53,57 @@ class MLP(nn.Module):
     def forward(self, x, num_steps=1):
 
         predictions = []
-        save = x[0, self.indices['demand_timeseries']]
-        x = self.main(x)
-        predictions.append(x)
-        for step in range(num_steps - 1):
-            x = self.main(x)
+        static_features = x[:, :self.indices['demand_timeseries'].start]
 
-            predictions.append(x)
+
+        for step in range(num_steps):
+            index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = index_corrector + self.demand_start, (self.demand_start + index_corrector + self.demand_nodes)
+            demands = x[:, timeseries_start:timeseries_end]
+            output = self.main(demands)
+            predictions.append(output)
+
+        # Convert the list of predictions to a tensor
+        predictions = torch.stack(predictions, dim=1)
+
+        return predictions
+
+class MLPStatic(nn.Module):
+    def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
+        super(MLPStatic, self).__init__()
+        torch.manual_seed(42)
+        self.hid_channels = hid_channels
+        self.indices = indices
+        self.demand_nodes = junctions
+
+        self.demand_start = indices['demand_timeseries'].start
+
+        self.total_input_length = self.demand_start + self.demand_nodes
+
+        layers = [Linear(self.total_input_length, hid_channels),
+                  nn.ReLU()]
+
+        for l in range(num_layers - 1):
+            layers += [Linear(hid_channels, hid_channels),
+                       nn.ReLU()]
+
+        layers += [Linear(hid_channels, num_outputs)]
+
+        self.main = nn.Sequential(*layers)
+
+    def forward(self, x, num_steps=1):
+
+        predictions = []
+        static_features = x[:, :self.indices['demand_timeseries'].start]
+
+
+        for step in range(num_steps):
+            index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = index_corrector + self.demand_start, (self.demand_start + index_corrector + self.demand_nodes)
+            demands = x[:, timeseries_start:timeseries_end]
+            input = torch.cat((static_features, demands), dim=1)
+            output = self.main(input)
+            predictions.append(output)
 
         # Convert the list of predictions to a tensor
         predictions = torch.stack(predictions, dim=1)
