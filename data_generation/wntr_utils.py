@@ -638,7 +638,7 @@ def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, contin
 
     start_time = time.time()
     all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous,
-                               randomized_demands=randomized_demands, count=10)
+                               randomized_demands=randomized_demands, count=0)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"Execution time: {execution_time:.6f} seconds\n")
