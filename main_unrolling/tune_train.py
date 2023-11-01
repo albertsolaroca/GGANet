@@ -29,7 +29,7 @@ cfg = read_config("config_unrolling.yaml")
 # create folder for result
 exp_name = cfg['exp_name']
 data_folder = cfg['data_folder']
-results_folder = create_folder_structure_MLPvsGNN(cfg, parent_folder='./experiments')
+
 
 res_columns = ['train_loss', 'valid_loss', 'test_loss', 'max_train_loss', 'max_valid_loss', 'max_test_loss',
                'min_train_loss', 'min_valid_loss', 'min_test_loss', 'r2_train', 'r2_valid',
@@ -59,6 +59,22 @@ def default_configuration():
                                      weight_decay=weight_decay)
 
     return default_config
+
+def make_config_dict(configuration):
+    config = {}
+    config['batch_size'] = configuration.batch_size
+    config['num_epochs'] = configuration.num_epochs
+    config['alpha'] = configuration.alpha
+    config['patience'] = configuration.patience
+    config['divisor'] = configuration.divisor
+    config['epoch_frequency'] = configuration.epoch_frequency
+    config['algorithm'] = configuration.algorithm
+    config['num_layers'] = configuration.num_layers
+    config['hid_channels'] = configuration.hid_channels
+    config['learning_rate'] = configuration.learning_rate
+    config['weight_decay'] = configuration.weight_decay
+
+    return config
 
 def prepare_training(configuration):
     wdn = all_wdn_names[0]
@@ -109,6 +125,7 @@ def prepare_training(configuration):
 
     return tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn
 def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn):
+
         # create results dataframe
         results_df = pd.DataFrame()
 
@@ -120,6 +137,10 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
         combination['indices'] = indices
         combination['junctions'] = junctions
         combination['num_outputs'] = output_nodes
+
+        # create folder structure
+        results_folder = create_folder_structure_MLPvsGNN("MLPs", algorithm, [wdn],
+                                                          parent_folder='./experiments')
 
         # initialize pytorch device
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -186,8 +207,14 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
                                           total_parameters, elapsed_time, test_time)
 
         # Saving configuration
-        with open(f'{results_folder}/{wdn}/{algorithm}/configuration.json', 'w') as fp:
-            json.dump(vars(configuration), fp)
+        if isinstance(configuration, SimpleNamespace):
+            with open(f'{results_folder}/{wdn}/{algorithm}/configuration.json', 'w') as fp:
+                json.dump(vars(configuration), fp)
+        else:
+            config = make_config_dict(configuration)
+            with open(f'{results_folder}/{wdn}/{algorithm}/configuration.json', 'w') as fp:
+                json.dump(config, fp)
+
 
         _, _, _, pred, real, time = testing(model, val_loader)
         pred = gn.inverse_transform_array(pred, 'pressure')
@@ -210,14 +237,13 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
 
 # Main method
 if __name__ == "__main__":
-    agent = False
+    agent = True
     if not agent:
         default_config = default_configuration()
         tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn = prepare_training(default_config)
         train(default_config, tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn)
     else:
         wandb.init()
-        print(wandb.config)
         tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn = prepare_training(wandb.config)
         train(wandb.config, tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn)
         wandb.finish()

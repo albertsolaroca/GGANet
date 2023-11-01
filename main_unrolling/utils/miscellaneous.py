@@ -60,14 +60,14 @@ def create_folder_structure(cfg, parent_folder='./results', max_trials=1000):
     
     return results_folder
     
-def create_folder_structure_MLPvsGNN(cfg, parent_folder='./results', max_trials=1000): 
+def create_folder_structure_MLPvsGNN(exp_name, algorithm, networks, parent_folder='./results', max_trials=1000):
     '''
     ad hoc solution that has to be removed (e.g., add a split arg to original function for shortcut? 
                                                   long term you must redo all this)
     '''
-    folder_name = cfg['exp_name']    
+    folder_name = exp_name
     # retrieve here list of architectures
-    algorithms = cfg['algorithms']
+    algorithms = algorithm
     
     create_folder_flag = True
     counter = 0
@@ -80,7 +80,7 @@ def create_folder_structure_MLPvsGNN(cfg, parent_folder='./results', max_trials=
         if not os.path.exists(results_folder):                
             # creating folders
             print(f'Creating folder: {results_folder}')
-            for wdn in cfg['networks']:
+            for wdn in networks:
                 os.makedirs(f'{results_folder}/{wdn}', exist_ok=True)
                 for algorithm in algorithms:                    
                     os.makedirs(f'{results_folder}/{wdn}/{algorithm}')
