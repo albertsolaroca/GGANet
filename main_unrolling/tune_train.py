@@ -139,7 +139,7 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
         combination['num_outputs'] = output_nodes
 
         # create folder structure
-        results_folder = create_folder_structure_MLPvsGNN("MLPs", algorithm, [wdn],
+        results_folder = create_folder_structure_MLPvsGNN("MLPs", algorithm, wdn,
                                                           parent_folder='./experiments')
 
         # initialize pytorch device

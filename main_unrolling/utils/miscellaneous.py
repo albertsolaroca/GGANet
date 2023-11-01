@@ -60,14 +60,15 @@ def create_folder_structure(cfg, parent_folder='./results', max_trials=1000):
     
     return results_folder
     
-def create_folder_structure_MLPvsGNN(exp_name, algorithm, networks, parent_folder='./results', max_trials=1000):
+def create_folder_structure_MLPvsGNN(exp_name, algorithm, network, parent_folder='./results', max_trials=1000):
     '''
     ad hoc solution that has to be removed (e.g., add a split arg to original function for shortcut? 
                                                   long term you must redo all this)
     '''
     folder_name = exp_name
     # retrieve here list of architectures
-    algorithms = algorithm
+    algorithms = [algorithm]
+    networks = [network]
     
     create_folder_flag = True
     counter = 0
