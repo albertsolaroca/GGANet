@@ -4,6 +4,6 @@
 dataset_names : ['FOS_tank'],
 
 # number of trials
-n_trials : [10000],
+n_trials : [1000],
 
 }

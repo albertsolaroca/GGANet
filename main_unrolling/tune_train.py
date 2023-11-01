@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import numpy as np
 import pandas as pd
 from sklearn.metrics import r2_score
 
@@ -174,6 +175,7 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
         R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
         # Logging plots on WandB
+        wandb.log({"Minimum validation loss": np.min(val_losses)})
         wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
         wandb.log({"R2": wandb.Image(R2_plot + ".png")})
         # store training history and model
@@ -205,7 +207,6 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
                                           min_losses['testing'],
                                           r2_scores['training'], r2_scores['validation'], r2_scores['testing'],
                                           total_parameters, elapsed_time, test_time)
-
         # Saving configuration
         if isinstance(configuration, SimpleNamespace):
             with open(f'{results_folder}/{wdn}/{algorithm}/configuration.json', 'w') as fp:
