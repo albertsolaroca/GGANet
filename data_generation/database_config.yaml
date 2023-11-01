@@ -1,7 +1,7 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['FOS_pump_tank'],
+dataset_names : ['FOS_tank'],
 
 # number of trials
 n_trials : [10000],

@@ -10,7 +10,7 @@ import wandb
 import torch.optim as optim
 
 from utils.miscellaneous import read_config
-from utils.miscellaneous import create_folder_structure_MLPvsGNN
+from utils.miscellaneous import create_folder_structure
 from utils.miscellaneous import initalize_random_generators
 from utils.wandb_logger import log_wandb_data, save_response_graphs_in_ML_tracker
 from utils.normalization import *
@@ -139,8 +139,8 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
         combination['num_outputs'] = output_nodes
 
         # create folder structure
-        results_folder = create_folder_structure_MLPvsGNN("MLPs", algorithm, wdn,
-                                                          parent_folder='./experiments')
+        results_folder = create_folder_structure("MLPs", algorithm, wdn,
+                                                 parent_folder='./experiments')
 
         # initialize pytorch device
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

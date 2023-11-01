@@ -84,6 +84,7 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
         plt.title("Prediction vs Real")
         plt.xlabel('Predicted pressure [m]')
         plt.ylabel('Real pressure [m]')
+        plt.show()
 
 
         if name is not None:
@@ -92,6 +93,43 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
 
     return r2_score(real, pred), name
 
+def plot_R2_dummy(pred, real, name=None, show=True, normalization=None):
+    '''
+    Calculate R^2 (coefficient of determination) between real and predicted pressures
+    ------
+    model: nn.Module
+        GNN model
+    loader: DataLoader
+        batched list of several graphs to be evaluated by the model
+    name: str
+        if given, a figure is saved with that name
+    normalization: dict
+        used to normalize pressures by the maximum
+    '''
+
+    if show:
+        if normalization is not None:
+            pred = normalization.inverse_transform_array(pred, 'pressure')
+            real = normalization.inverse_transform_array(real, 'pressure')
+
+        MIN = min(pred.min(), real.min())
+        MAX = max(pred.max(), real.max())
+
+        plt.scatter(pred, real, alpha=0.01)
+        plt.plot([MIN, MAX], [MIN, MAX], 'k-')
+        plt.xlim([0, MAX])
+        plt.ylim([0, MAX])
+        plt.title("Prediction vs Real")
+        plt.xlabel('Predicted pressure [m]')
+        plt.ylabel('Real pressure [m]')
+        plt.show()
+
+
+        if name is not None:
+            plt.savefig(name)
+            plt.close()
+
+    return r2_score(real, pred), name
 def plot_pressure(database, normalization=None):
     '''
     Plot pressure distribution over entire dataset

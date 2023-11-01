@@ -1,31 +1,20 @@
 import math
 
+import numpy as np
 import torch
 from torch import nn
 from torch.nn import Linear, Sequential
 
+class Dummy():
+    def __init__(self):
+        pass
 
-class Dummy(nn.Module):
-    def __init__(self, num_outputs, indices, something):
-        super(Dummy, self).__init__()
-        self.output_size = num_outputs
-        self.input_size = indices[list(indices.keys())[-1]].stop
-        self.layer = nn.Linear(self.input_size, self.output_size)
-        self.avg = None
-        self.count = 0
+    def evaluate(self, Y):
+        mean_per_row = torch.mean(Y, dim=1)
+        # repeat mean to match dimensions of Y
+        mean = mean_per_row.unsqueeze(1).repeat(1, Y.shape[1])
 
-    def forward(self, x, num_steps=1):
-        x = torch.mean(x, dim=1)
-        output = self.layer(x)
-        if self.training:
-            if self.avg is None:
-                self.avg = output.detach()
-            else:
-                self.avg = (self.avg * self.count + output.detach()) / (self.count + 1)
-            self.count += 1
-        else:
-            output = self.avg
-        return output
+        return mean
 
 class MLPDemandsOnly(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):

@@ -506,7 +506,6 @@ def from_wntr_to_nx(wn, flows):
             mul_val = multipliers * value
             sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(mul_val)
 
-
         # Reservoirs have base_head but no elevation and are identified with a 1
         elif sG_WDS.nodes[u]['type'] == 'Reservoir':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
@@ -558,7 +557,7 @@ def convert_to_pyg(dataset, continuous):
             press_shape = sample['pressure'].shape
             press_reshaped = sample['pressure'].values.reshape(press_shape[0], press_shape[1])
             pyg_data.pressure = torch.tensor(press_reshaped)
-            # We want to transpose the time series but perhaps we can do it later
+            # We want to transpose the time series, but perhaps we can do it later
             # pyg_data.demand_timeseries = pyg_data.demand_timeseries.transpose(0, 1).float()
         else:
             pyg_data.pressure = torch.tensor(sample['pressure'])
