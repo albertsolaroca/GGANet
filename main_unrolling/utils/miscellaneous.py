@@ -84,11 +84,11 @@ def create_folder_structure_MLPvsGNN(cfg, parent_folder='./results', max_trials=
                 os.makedirs(f'{results_folder}/{wdn}', exist_ok=True)
                 for algorithm in algorithms:                    
                     os.makedirs(f'{results_folder}/{wdn}/{algorithm}')
-                    os.makedirs(f'{results_folder}/{wdn}/{algorithm}/hist')
-                    os.makedirs(f'{results_folder}/{wdn}/{algorithm}/models')    
+                    # os.makedirs(f'{results_folder}/{wdn}/{algorithm}/hist')
+                    # os.makedirs(f'{results_folder}/{wdn}/{algorithm}/models')
                     os.makedirs(f'{results_folder}/{wdn}/{algorithm}/pred/')
-                    os.makedirs(f'{results_folder}/{wdn}/{algorithm}/loss/')
-                    os.makedirs(f'{results_folder}/{wdn}/{algorithm}/R2/')
+                    # os.makedirs(f'{results_folder}/{wdn}/{algorithm}/loss/')
+                    # os.makedirs(f'{results_folder}/{wdn}/{algorithm}/R2/')
                     for split in ['training','validation','testing']:
                         os.makedirs(f'{results_folder}/{wdn}/{algorithm}/pred/{split}')                    
             create_folder_flag = False

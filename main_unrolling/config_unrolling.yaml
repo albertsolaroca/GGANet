@@ -59,7 +59,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 200
+    num_epochs: 2
     batch_size: 128
 
 lossParams:

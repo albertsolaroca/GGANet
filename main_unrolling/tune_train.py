@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.metrics import r2_score
 
 import sys
-import pickle
+import json
 import wandb
 
 import torch.optim as optim
@@ -153,8 +153,8 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
         R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
         # Logging plots on WandB
-        # wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
-        # wandb.log({"R2": wandb.Image(R2_plot + ".png")})
+        wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
+        wandb.log({"R2": wandb.Image(R2_plot + ".png")})
         # store training history and model
         pd.DataFrame(data=np.array([tra_losses, val_losses]).T).to_csv(
             f'{results_folder}/{wdn}/{algorithm}/hist.csv')
@@ -177,13 +177,17 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
         #                cfg, train_config, loss_plot, R2_plot)
 
         # store results
-        results_df.loc[res_columns] = (losses['training'], losses['validation'], losses['testing'],
+        results_df.loc[0, res_columns] = (losses['training'], losses['validation'], losses['testing'],
                                           max_losses['training'], max_losses['validation'],
                                           max_losses['testing'],
                                           min_losses['training'], min_losses['validation'],
                                           min_losses['testing'],
                                           r2_scores['training'], r2_scores['validation'], r2_scores['testing'],
                                           total_parameters, elapsed_time, test_time)
+
+        # Saving configuration
+        with open(f'{results_folder}/{wdn}/{algorithm}/configuration.json', 'w') as fp:
+            json.dump(vars(configuration), fp)
 
         _, _, _, pred, real, time = testing(model, val_loader)
         pred = gn.inverse_transform_array(pred, 'pressure')
@@ -193,9 +197,8 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
 
         for i in [0, 1, 7, 36]:
             names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Random Node', 36: 'Tank'}
-            # save_response_graphs_in_ML_tracker(real, pred, names[i], i)
+            save_response_graphs_in_ML_tracker(real, pred, names[i], i)
 
-        # wandb.finish()
         # save graph normalizer
         # with open(f'{results_folder}/{wdn}/{algorithm}/gn.pickle', 'wb') as handle:
         #     pickle.dump(gn, handle, protocol=pickle.HIGHEST_PROTOCOL)
