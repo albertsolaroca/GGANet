@@ -352,7 +352,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     res_dict['flowrate'] = sim.link['flowrate'].squeeze()
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
-    sim_check = ((res_dict['pressure'][ix] > 14).all()) & (sim.error_code == None)
+    sim_check = ((res_dict['pressure'][ix] > 1).all()) & (sim.error_code == None)
     res_dict['network_name'] = network
     res_dict['network'] = wn
     return res_dict, sim, sim_check
