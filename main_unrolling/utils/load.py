@@ -10,18 +10,19 @@ from torch_geometric.utils import to_networkx
 
 HEAD_INDEX = 0  # Elevation + base head + initial level
 NODE_DIAMETER_INDEX = 1  # Needed for tanks
-TYPE_INDEX = 2
+NODE_TYPE_INDEX = 2
 DEMAND_TIMESERIES = slice(3, 27)
 # The following three indexes describe edges in the edge_attr torch vector
 DIAMETER_INDEX = 0
-LENGTH_INDEX = 1
-ROUGHNESS_INDEX = 2
-FLOW_INDEX = 3
-POWER_INDEX = 4
-# The following three indexes describe the node types inside the x torch vector -> TYPE_INDEX variable
+EDGE_TYPE_INDEX = 1
+SCHEDULE_TIMESERIES = slice(2, 26)
+# The following three indexes describe the node types inside the x torch vector -> NODE_TYPE_INDEX variable
 JUNCTION_TYPE = 0
 RESERVOIR_TYPE = 1
 TANK_TYPE = 2
+# The following two indexes describe the edge types inside the edge_attr torch vector
+PIPE_TYPE = 0
+PUMP_TYPE = 1
 
 
 
@@ -65,9 +66,15 @@ def create_dataset(database, normalizer=None, output='pressure'):
         # type_1H is equal to 1 when the node is a reservoir and 2 when it's a tank
 
         # We want to make the tuple that constructs a node of any type
+
+        head = i.elevation + i.base_head + i.initial_level
         network_characteristics = torch.stack(
-            (i.elevation + i.base_head + i.initial_level, i.node_diameter, i.node_type), dim=1).float()
-        total_input = torch.cat((network_characteristics, i.demand_timeseries), dim=1).float()
+            (head, i.node_diameter, i.node_type), dim=1).float()
+        demands = i.demand_timeseries
+        if demands.dim() == 1:
+            total_input = torch.stack((head, i.node_diameter, i.node_type, demands), dim=1).float()
+        elif demands.dim() == 2:
+            total_input = torch.cat((network_characteristics, demands), dim=1).float()
         graph.x = total_input
 
         # Position and ID
@@ -78,12 +85,14 @@ def create_dataset(database, normalizer=None, output='pressure'):
         graph.edge_index = i.edge_index
 
         # Edge attributes
-        diameter = i.diameter
         # length = i.length
         # roughness = i.roughness
         # schedule = i.schedule
         # graph.edge_attr = torch.stack((diameter, length, roughness), dim=1).float()
-        graph.edge_attr = diameter.unsqueeze(1).float()
+        edge_characteristics = torch.stack((i.diameter, i.num_edge_type), dim=1)
+        pump_schedules = i.schedule
+        graph.edge_attr = torch.cat((edge_characteristics, pump_schedules), dim=1).float()
+
 
         # If the length of the shape of pressure was 2 then it means that the simulation was continuous
         press_shape = i.pressure.shape
@@ -108,39 +117,32 @@ def create_dataset(database, normalizer=None, output='pressure'):
     return graphs, A12
 
 
-def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', 'demand_timeseries'], no_res_out=True):
+def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', 'pump_schedules', 'demand_timeseries'], no_res_out=True):
     # index edges to avoid duplicates: this considers all graphs to be UNDIRECTED!
     ix_edge = graphs[0].edge_index.numpy().T
     ix_edge = (ix_edge[:, 0] < ix_edge[:, 1])
-
+    ix_pipe = (graphs[0].edge_attr[:, EDGE_TYPE_INDEX].numpy() == PIPE_TYPE) & ix_edge
+    ix_pump = (graphs[0].edge_attr[:, EDGE_TYPE_INDEX].numpy() == PUMP_TYPE) & ix_edge
     # position of reservoirs, and tanks
     # reservoir type is 1, tank is 2
-    ix_junct = graphs[0].x[:, TYPE_INDEX].numpy() == JUNCTION_TYPE
-    ix_res = graphs[0].x[:, TYPE_INDEX].numpy() == RESERVOIR_TYPE
-    ix_tank = graphs[0].x[:, TYPE_INDEX].numpy() == TANK_TYPE
+    ix_junct = graphs[0].x[:, NODE_TYPE_INDEX].numpy() == JUNCTION_TYPE
+    ix_res = graphs[0].x[:, NODE_TYPE_INDEX].numpy() == RESERVOIR_TYPE
+    ix_tank = graphs[0].x[:, NODE_TYPE_INDEX].numpy() == TANK_TYPE
     indices = {}
     prev_feature = None
     for ix_feat, feature in enumerate(features):
         for ix_item, item in enumerate(graphs):
-            if feature == 'diameter':
-                x_ = item.edge_attr[ix_edge, DIAMETER_INDEX]
-            elif feature == 'roughness':
-                # remove reservoirs
-                x_ = item.edge_attr[ix_edge, ROUGHNESS_INDEX]
-            elif feature == 'length':
-                # remove reservoirs
-                x_ = item.edge_attr[ix_edge, LENGTH_INDEX]
+            if feature == 'base_heads':
+                # filter below on ix_res or ix_tank
+                ix_res_or_tank = np.logical_or(ix_res, ix_tank)
+                x_ = item.x[ix_res_or_tank, HEAD_INDEX]
+            elif feature == 'diameter':
+                x_ = item.edge_attr[ix_pipe, DIAMETER_INDEX]
+            elif feature == 'pump_schedules':
+                x_ = item.edge_attr[ix_pump, SCHEDULE_TIMESERIES]
             elif feature == 'demand_timeseries':
                 # remove reservoirs
                 x_ = item.x[ix_junct, DEMAND_TIMESERIES]
-            elif feature == 'nodal_diameters':
-                # Only get diameters for
-                x_ = item.x[ix_tank, NODE_DIAMETER_INDEX]
-            elif feature == 'base_heads':
-                # filter below on ix_res or ix_tank
-                ix_res_or_tank = np.logical_or(ix_res, ix_tank)
-
-                x_ = item.x[ix_res_or_tank, HEAD_INDEX]
             else:
                 raise ValueError(f'Feature {feature} not supported.')
 
@@ -196,7 +198,7 @@ def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', '
 def create_incidence_matrices(graphs, incidence_matrix):
     # position of reservoirs
 
-    ix_junct = graphs[0].x[:, TYPE_INDEX].numpy() == JUNCTION_TYPE
+    ix_junct = graphs[0].x[:, NODE_TYPE_INDEX].numpy() == JUNCTION_TYPE
     ix_edge = graphs[0].edge_index.numpy().T
     ix_edge = (ix_edge[:, 0] < ix_edge[:, 1])
     incidence_matrix = incidence_matrix[ix_edge, :]

@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from torch.nn import Linear, Sequential
 
+
 class Dummy():
     def __init__(self):
         pass
@@ -15,6 +16,7 @@ class Dummy():
         mean = mean_per_row.unsqueeze(1).repeat(1, Y.shape[1])
 
         return mean
+
 
 class MLPDemandsOnly(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
@@ -42,12 +44,12 @@ class MLPDemandsOnly(nn.Module):
     def forward(self, x, num_steps=1):
 
         predictions = []
-        static_features = x[:, :self.indices['demand_timeseries'].start]
-
+        # static_features = x[:, :self.indices['demand_timeseries'].start]
 
         for step in range(num_steps):
             index_corrector = self.demand_nodes * step
-            timeseries_start, timeseries_end = index_corrector + self.demand_start, (self.demand_start + index_corrector + self.demand_nodes)
+            timeseries_start, timeseries_end = index_corrector + self.demand_start, (
+                        self.demand_start + index_corrector + self.demand_nodes)
             demands = x[:, timeseries_start:timeseries_end]
             output = self.main(demands)
             predictions.append(output)
@@ -56,6 +58,7 @@ class MLPDemandsOnly(nn.Module):
         predictions = torch.stack(predictions, dim=1)
 
         return predictions
+
 
 class MLPStatic(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
@@ -85,10 +88,10 @@ class MLPStatic(nn.Module):
         predictions = []
         static_features = x[:, :self.indices['demand_timeseries'].start]
 
-
         for step in range(num_steps):
             index_corrector = self.demand_nodes * step
-            timeseries_start, timeseries_end = index_corrector + self.demand_start, (self.demand_start + index_corrector + self.demand_nodes)
+            timeseries_start, timeseries_end = index_corrector + self.demand_start, (
+                        self.demand_start + index_corrector + self.demand_nodes)
             demands = x[:, timeseries_start:timeseries_end]
             input = torch.cat((static_features, demands), dim=1)
             output = self.main(input)
@@ -294,9 +297,9 @@ class UnrollingModel(nn.Module):
     def forward(self, x, num_steps=1):
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
         s, h0, d, edge_features = (
-        x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(),
-        x[:, self.indices['diameter']].float(),
-        x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
+            x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(),
+            x[:, self.indices['diameter']].float(),
+            x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
 
         res_h0_q, res_s_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hids_q(s), self.hidh0_h(h0), self.hid_S(
             edge_features)

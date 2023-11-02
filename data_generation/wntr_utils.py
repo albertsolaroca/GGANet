@@ -244,17 +244,17 @@ def get_wdn_options(networks, path):
     return df_options
 
 
-def alter_water_network(wn, randomized_demands=None):
+def alter_water_network(wn, continuous, randomized_demands=None):
     '''
 	This function randomly modifies nodes and edges attributes in the water network according to the distributions in d_attr.
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
-    set_attribute_all_nodes_rand(wn, randomized_demands)
+    set_attribute_all_nodes_rand(wn, continuous, randomized_demands)
     return None
 
 
-def set_attribute_all_nodes_rand(wn, randomized_demands):
+def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     '''
 	This function changes an attribute attr_str (e.g., base demand) from all nodes in the network based on their orignal value.
 	The list of potential values is contained in attr_values. search_range identifies how many values to the left and to the right
@@ -264,7 +264,7 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
 	'''
 
     # Setting the demand per node to a random value out of three randomly generated types of households
-    if randomized_demands:
+    if continuous:
         for i in randomized_demands:
             wn.add_pattern(f'demand_pattern_{i}',
                            randomized_demands[i])
@@ -273,7 +273,7 @@ def set_attribute_all_nodes_rand(wn, randomized_demands):
         node = wn.get_node(id)
         node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.0000012
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
-        if randomized_demands:
+        if continuous:
             node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(
                 np.random.choice(['one_person', 'two_person', 'family']))
 
@@ -340,7 +340,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     inp_file = f'{path}/{network}.inp'
     wn = load_water_network(inp_file)
 
-    alter_water_network(wn, randomized_demands)
+    alter_water_network(wn, continuous, randomized_demands)
     # retrieve input features
     for feat in link_feats:
         res_dict[feat] = get_attribute_all_links(wn, feat)
@@ -420,7 +420,7 @@ def plot_dataset_attribute_distribution(dataset, attribute, figsize=(20, 5), bin
     return df_attr
 
 
-def from_wntr_to_nx(wn, flows):
+def from_wntr_to_nx(wn, continuous):
     '''
 	This function converts a WNTR object to networkx
 	'''
@@ -441,9 +441,10 @@ def from_wntr_to_nx(wn, flows):
                     sG_WDS[u][v]['diameter'] = edge[1].diameter
                     # sG_WDS[u][v]['length'] = edge[1].length
                     # sG_WDS[u][v]['roughness'] = edge[1].roughness
+                    sG_WDS[u][v]['num_edge_type'] = 0
                     sG_WDS[u][v]['coeff_r'] = 0
                     sG_WDS[u][v]['coeff_n'] = 0
-                    sG_WDS[u][v]['schedule'] = []
+                    sG_WDS[u][v]['schedule'] = torch.tensor(np.array([0] * 24))
 
                 elif sG_WDS[u][v]['type'] == 'Pump':
                     # Only handling Power Pumps for now
@@ -451,7 +452,7 @@ def from_wntr_to_nx(wn, flows):
                     sG_WDS[u][v]['diameter'] = 0
                     # sG_WDS[u][v]['length'] = 0
                     # sG_WDS[u][v]['roughness'] = 0
-
+                    sG_WDS[u][v]['num_edge_type'] = 1
                     curve = wn.get_curve(edge[1].pump_curve_name)
                     curve_points = curve.points
 
@@ -476,11 +477,11 @@ def from_wntr_to_nx(wn, flows):
                     sG_WDS[u][v]['coeff_r'] = B  # Coeff R = B
                     sG_WDS[u][v]['coeff_n'] = C  # Coeff N = C
 
-                    speed_pattern = wn.get_pattern(edge[1].speed_pattern_name)
+                    speed_pattern = wn.get_pattern(edge[1].speed_pattern_name).multipliers
                     if speed_pattern is None:
-                        sG_WDS[u][v]['schedule'] = [1] * 24
+                        sG_WDS[u][v]['schedule'] = [0] * 24
                     else:
-                        sG_WDS[u][v]['schedule'] = speed_pattern.multipliers
+                        sG_WDS[u][v]['schedule'] = torch.tensor(speed_pattern)
 
                 else:
                     print(sG_WDS[u][v]['type'], u, v)
@@ -498,32 +499,44 @@ def from_wntr_to_nx(wn, flows):
             sG_WDS.nodes[u]['initial_level'] = 0
             sG_WDS.nodes[u]['node_diameter'] = 0
 
-            pattern_name = wn_nodes[i][1].demand_timeseries_list.to_list()[0]['pattern_name']
+            if continuous:
+                pattern_name = wn_nodes[i][1].demand_timeseries_list.to_list()[0]['pattern_name']
 
-            multipliers = wn.get_pattern(pattern_name).multipliers
-            # Not sure about the multiplicatiobn below. Shouldn't really matter anyway
-            value = wn_nodes[i][1].demand_timeseries_list[0].base_value * 1000
-            mul_val = multipliers * value
-            sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(mul_val)
+                multipliers = wn.get_pattern(pattern_name).multipliers
+                # Not sure about the multiplicatiobn below. Shouldn't really matter anyway
+                value = wn_nodes[i][1].demand_timeseries_list[0].base_value * 1000
+                mul_val = multipliers * value
+                sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(mul_val)
+            else:
+                sG_WDS.nodes[u]['demand_timeseries'] = wn_nodes[i][1].base_demand
 
         # Reservoirs have base_head but no elevation and are identified with a 1
         elif sG_WDS.nodes[u]['type'] == 'Reservoir':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 1
-            sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(np.array([0] * 24))
             sG_WDS.nodes[u]['elevation'] = 0
             sG_WDS.nodes[u]['base_head'] = wn_nodes[i][1].base_head
             sG_WDS.nodes[u]['initial_level'] = 0
             sG_WDS.nodes[u]['node_diameter'] = 0
+
+            if continuous:
+                sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(np.array([0] * 24))
+            else:
+                sG_WDS.nodes[u]['demand_timeseries'] = 0
+
         # Tanks have an elevation, as well as initial_level and diameter
         elif sG_WDS.nodes[u]['type'] == 'Tank':
             sG_WDS.nodes[u]['ID'] = wn_nodes[i][1].name
             sG_WDS.nodes[u]['node_type'] = 2
-            sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(np.array([0] * 24))
             sG_WDS.nodes[u]['elevation'] = wn_nodes[i][1].elevation
             sG_WDS.nodes[u]['base_head'] = 0
             sG_WDS.nodes[u]['initial_level'] = wn_nodes[i][1].init_level
             sG_WDS.nodes[u]['node_diameter'] = wn_nodes[i][1].diameter
+            if continuous:
+                sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(np.array([0] * 24))
+            else:
+                sG_WDS.nodes[u]['demand_timeseries'] = 0
+
         else:
             print(u)
             raise Exception('Only Junctions, Reservoirs and Tanks so far')
@@ -546,7 +559,7 @@ def convert_to_pyg(dataset, continuous):
         wn = sample['network']
         flows = sample['flowrate']
         # create PyG Data
-        pyg_data = convert.from_networkx(from_wntr_to_nx(wn, flows))
+        pyg_data = convert.from_networkx(from_wntr_to_nx(wn, continuous))
 
         # Add network name
         pyg_data.name = sample['network_name']
@@ -557,19 +570,11 @@ def convert_to_pyg(dataset, continuous):
             press_shape = sample['pressure'].shape
             press_reshaped = sample['pressure'].values.reshape(press_shape[0], press_shape[1])
             pyg_data.pressure = torch.tensor(press_reshaped)
-            # We want to transpose the time series, but perhaps we can do it later
-            # pyg_data.demand_timeseries = pyg_data.demand_timeseries.transpose(0, 1).float()
         else:
             pyg_data.pressure = torch.tensor(sample['pressure'])
 
         # convert to float where needed
         pyg_data.diameter = pyg_data.diameter.float()
-
-        # pyg_data.roughness = pyg_data.roughness.float()
-        # pyg_data.length = pyg_data.length.float()
-
-        # I believe giving the flowrate is not required
-        # pyg_data.flowrate = pyg_data.flowrate.float()
 
         all_pyg_data.append(pyg_data)
 

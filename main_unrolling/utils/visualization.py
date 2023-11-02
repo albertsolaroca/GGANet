@@ -84,7 +84,7 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
         plt.title("Prediction vs Real")
         plt.xlabel('Predicted pressure [m]')
         plt.ylabel('Real pressure [m]')
-        plt.show()
+        # plt.show()
 
 
         if name is not None:

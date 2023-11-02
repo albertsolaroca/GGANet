@@ -38,7 +38,7 @@ hyperParams:
                 - 4
         MLPStatic:
             hid_channels:
-                - 128
+                - 256
             num_layers:
                 - 4
         LSTM:
@@ -60,13 +60,13 @@ hyperParams:
 #                - 2
 
 adamParams:
-    lr: 0.001
-    weight_decay: 0.0001
+    lr: 0.0001
+    weight_decay: 0.001
 
 
 trainParams:
-    num_epochs: 1000
-    batch_size: 128
+    num_epochs: 300
+    batch_size: 32
 
 lossParams:
         alpha: 0
@@ -74,4 +74,4 @@ lossParams:
 earlyStopping:
     patience: 20
     divisor: 2
-    epoch_frequency: 100
+    epoch_frequency: 20
