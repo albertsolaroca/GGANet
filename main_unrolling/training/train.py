@@ -125,7 +125,8 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             # Model prediction
             # If dataset is continuous then we need to pass the sequence length (y.shape[1]) to the model
             if len(y.shape) > 2:
-                preds = model.float()(x, y.shape[1])
+                num_steps = y.shape[1]
+                preds = model.float()(x, num_steps)
             else:
                 preds = model.float()(x)
             # MSE loss function

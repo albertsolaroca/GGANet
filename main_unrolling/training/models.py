@@ -25,10 +25,12 @@ class MLPDemandsOnly(nn.Module):
         self.hid_channels = hid_channels
         self.indices = indices
         self.demand_nodes = junctions
-
         self.demand_start = indices['demand_timeseries'].start
+        self.static_feat_end = indices['diameter'].stop
+        # To calculate amount of pumps we assume that the time period is 24
+        self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
 
-        self.total_input_length = self.demand_nodes
+        self.total_input_length = self.pump_number + self.demand_nodes
 
         layers = [Linear(self.total_input_length, hid_channels),
                   nn.ReLU()]
@@ -47,11 +49,16 @@ class MLPDemandsOnly(nn.Module):
         # static_features = x[:, :self.indices['demand_timeseries'].start]
 
         for step in range(num_steps):
-            index_corrector = self.demand_nodes * step
-            timeseries_start, timeseries_end = index_corrector + self.demand_start, (
-                        self.demand_start + index_corrector + self.demand_nodes)
+            demand_index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
+                    self.demand_start + demand_index_corrector + self.demand_nodes)
             demands = x[:, timeseries_start:timeseries_end]
-            output = self.main(demands)
+
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in list(range(self.pump_number))]
+
+            pump_settings = x[:, pump_positions]
+            input = torch.cat((pump_settings, demands), dim=1)
+            output = self.main(input)
             predictions.append(output)
 
         # Convert the list of predictions to a tensor
@@ -67,10 +74,13 @@ class MLPStatic(nn.Module):
         self.hid_channels = hid_channels
         self.indices = indices
         self.demand_nodes = junctions
-
         self.demand_start = indices['demand_timeseries'].start
+        self.static_feat_end = indices['diameter'].stop
 
-        self.total_input_length = self.demand_start + self.demand_nodes
+        # To calculate amount of pumps we assume that the time period is 24
+        self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
+
+        self.total_input_length = self.static_feat_end + self.pump_number + self.demand_nodes
 
         layers = [Linear(self.total_input_length, hid_channels),
                   nn.ReLU()]
@@ -86,14 +96,17 @@ class MLPStatic(nn.Module):
     def forward(self, x, num_steps=1):
 
         predictions = []
-        static_features = x[:, :self.indices['demand_timeseries'].start]
-
+        static_features = x[:, :self.static_feat_end]
         for step in range(num_steps):
-            index_corrector = self.demand_nodes * step
-            timeseries_start, timeseries_end = index_corrector + self.demand_start, (
-                        self.demand_start + index_corrector + self.demand_nodes)
+            demand_index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
+                        self.demand_start + demand_index_corrector + self.demand_nodes)
             demands = x[:, timeseries_start:timeseries_end]
-            input = torch.cat((static_features, demands), dim=1)
+
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in list(range(self.pump_number))]
+
+            pump_settings = x[:, pump_positions]
+            input = torch.cat((static_features, pump_settings, demands), dim=1)
             output = self.main(input)
             predictions.append(output)
 
@@ -105,7 +118,7 @@ class MLPStatic(nn.Module):
 
 class MLPOld(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, num_layers=6):
-        super(MLP, self).__init__()
+        super(MLPOld, self).__init__()
         torch.manual_seed(42)
         self.hid_channels = hid_channels
         self.indices = indices

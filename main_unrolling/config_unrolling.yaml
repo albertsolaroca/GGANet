@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['FOS_tank']
+networks: ['FOS_pump_sched']
 
 
 # number of training samples to use (if < than total)
@@ -38,9 +38,9 @@ hyperParams:
                 - 4
         MLPStatic:
             hid_channels:
-                - 256
+                - 128
             num_layers:
-                - 4
+                - 2
         LSTM:
             hid_channels:
 #                - 128
@@ -65,7 +65,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 300
+    num_epochs: 500
     batch_size: 32
 
 lossParams:

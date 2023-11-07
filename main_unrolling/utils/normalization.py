@@ -88,7 +88,7 @@ class GraphNormalizer:
         '''
         graph = graph.clone()
         for ix, feat in enumerate(self.x_feat_names):
-            if feat != 'type' and feat != 'demand_timeseries' and feat != 'pump_schedules':
+            if feat != 'type' and feat != 'pump_schedules':
                 temp = graph.x[:, ix].numpy().reshape(-1, 1)
                 graph.x[:, ix] = torch.tensor(self.scalers[feat].transform(temp).reshape(-1))
         for ix, feat in enumerate(self.ea_feat_names):
