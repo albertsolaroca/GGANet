@@ -80,6 +80,8 @@ def make_config_dict(configuration):
 
 
 def prepare_training():
+    wdn = all_wdn_names[0]
+    
     print(f'\nWorking with {wdn}')
     if os.path.exists('prepared_data.pkl'):
         with open('prepared_data.pkl', 'rb') as file:
@@ -87,8 +89,6 @@ def prepare_training():
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepared_data
 
     else:
-        wdn = all_wdn_names[0]
-
         # retrieve wntr data
         tra_database, val_database, tst_database = load_raw_dataset(wdn, data_folder)
         # reduce training data
