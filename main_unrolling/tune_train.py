@@ -189,9 +189,9 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
     # Logging plots on WandB
-    # wandb.log({"Minimum validation loss": np.min(val_losses)})
-    # wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
-    # wandb.log({"R2": wandb.Image(R2_plot + ".png")})
+    wandb.log({"val_loss": np.min(val_losses)})
+    wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
+    wandb.log({"R2": wandb.Image(R2_plot + ".png")})
     # store training history and model
     pd.DataFrame(data=np.array([tra_losses, val_losses]).T).to_csv(
         f'{results_folder}/{wdn}/{algorithm}/hist.csv')
