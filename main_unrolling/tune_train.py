@@ -262,7 +262,7 @@ if __name__ == "__main__":
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
         train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
     else:
-        wandb.init()
+        wandb.init(console=False)
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
-        train(tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
+        train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
         wandb.finish()

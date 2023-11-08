@@ -215,14 +215,14 @@ class LSTM(nn.Module):
 
 
 class BaselineUnrolling(nn.Module):
-    def __init__(self, num_outputs, indices, num_blocks):
+    def __init__(self, num_outputs, indices, junctions, num_layers=6):
         super(BaselineUnrolling, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        self.num_heads = indices['nodal_demands'].stop
+        self.num_heads = junctions
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
-        self.num_blocks = num_blocks
+        self.num_blocks = num_layers
         self.n = 1.852
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -230,7 +230,7 @@ class BaselineUnrolling(nn.Module):
         self.hid_HF = nn.ModuleList()
         self.hid_FH = nn.ModuleList()
 
-        for i in range(num_blocks):
+        for i in range(self.num_blocks):
             self.hid_HF.append(Sequential(Linear(self.num_heads, self.num_flows), nn.ReLU()))
             self.hid_FH.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
 
@@ -238,8 +238,7 @@ class BaselineUnrolling(nn.Module):
 
     def forward(self, x, num_steps=1):
 
-        s, h0, d = torch.unsqueeze(x[:, self.indices['nodal_demands']], dim=2), \
-            torch.unsqueeze(x[:, self.indices['base_heads']], dim=2), \
+        h0, d = torch.unsqueeze(x[:, self.indices['base_heads']], dim=2), \
             x[:, self.indices['diameter']].float().view(-1, self.num_flows, 1),
 
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).view(-1, self.num_flows).float()
@@ -263,14 +262,14 @@ class BaselineUnrolling(nn.Module):
 
 
 class UnrollingModel(nn.Module):
-    def __init__(self, num_outputs, indices, num_blocks):
+    def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
         super(UnrollingModel, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
         self.num_heads = indices['nodal_demands'].stop
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
-        self.num_blocks = num_blocks
+        self.num_blocks = num_layers
 
         self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
         self.hids_q = Linear(self.num_heads, self.num_flows)  # 4.6/4.10
@@ -291,7 +290,7 @@ class UnrollingModel(nn.Module):
         self.hidD_h = nn.ModuleList()
         self.hidA_q = nn.ModuleList()
 
-        for i in range(num_blocks):
+        for i in range(self.num_blocks):
             self.hid_hf.append(Sequential(Linear(self.num_heads, self.num_flows), nn.PReLU()))
             self.hid_fh.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
             self.resq.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
