@@ -7,13 +7,14 @@ import yaml
 from matplotlib import pyplot as plt
 import pysimdeum
 
+
 def simulate_thread(house_type, num_patterns, duration, output):
     house = pysimdeum.built_house(house_type=house_type)
     consumption = house.simulate(num_patterns=num_patterns, duration=duration)
     output[house_type] = consumption
 
-def generate_demand_patterns():
 
+def generate_demand_patterns():
     # Demand generation
 
     # Build houses
@@ -54,45 +55,39 @@ def generate_demand_patterns():
     # Reading in the yaml file above and reconstructing dictionary
     with open('demand_patterns.yaml') as file:
         tot_avg_cons = yaml.load(file, Loader=yaml.FullLoader)['demand_patterns']
-        print(tot_avg_cons)
-        tot_avg_cons = yaml.load(file, Loader=yaml.FullLoader)
-        print(tot_avg_cons)
-        tot_avg_cons = tot_avg_cons['demand_patterns']
-        print(tot_avg_cons)
 
     return tot_avg_cons
+
 
 def pseudogenerate_demand_patterns():
     # Reading in the yaml file above and reconstructing dictionary
     with open('demand_patterns.yaml') as file:
         tot_avg_cons = yaml.load(file, Loader=yaml.FullLoader)['demand_patterns']
-
-
     return tot_avg_cons
 
 
 # def plot_demand_patterns():
-    # Plot the consumption patterns
-    # plot_colors = ['lightblue', 'mediumblue', 'darkblue']
-    # colour_index = 0
-    # for cons in all_cons:
-    #     print(tot_avg_cons[cons])
-    #     # Build statistics from consumption
-    #     tot_cons = all_cons[cons].sum(['enduse', 'user']).sum(['patterns'])
-    #     rolling_sum = tot_cons.rolling(time=3600, center=True).mean()
-    #
-    #     index = rolling_sum.indexes['time']
-    #
-    #     plt.plot(rolling_sum, color=plot_colors[colour_index], label=cons)
-    #
-    #     colour_index += 1
-    #
-    # # Setting the number of ticks
-    # plt.xticks(range(0, 90000, 3600), range(0, 25))
-    # plt.legend()
-    # plt.ylabel("Demand Multiplier")
-    # plt.xlabel("Hour")
-    # plt.show()
+# Plot the consumption patterns
+# plot_colors = ['lightblue', 'mediumblue', 'darkblue']
+# colour_index = 0
+# for cons in all_cons:
+#     print(tot_avg_cons[cons])
+#     # Build statistics from consumption
+#     tot_cons = all_cons[cons].sum(['enduse', 'user']).sum(['patterns'])
+#     rolling_sum = tot_cons.rolling(time=3600, center=True).mean()
+#
+#     index = rolling_sum.indexes['time']
+#
+#     plt.plot(rolling_sum, color=plot_colors[colour_index], label=cons)
+#
+#     colour_index += 1
+#
+# # Setting the number of ticks
+# plt.xticks(range(0, 90000, 3600), range(0, 25))
+# plt.legend()
+# plt.ylabel("Demand Multiplier")
+# plt.xlabel("Hour")
+# plt.show()
 
 def replace_demand_patterns(file_path, demand_patterns):
     with open(file_path, 'r') as file:
@@ -114,6 +109,3 @@ def replace_demand_patterns(file_path, demand_patterns):
 
     with open(file_path, 'w') as file:
         file.writelines(lines)
-
-
-
