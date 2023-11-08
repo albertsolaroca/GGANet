@@ -1,7 +1,9 @@
+import os
 from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import yaml
 from sklearn.metrics import r2_score
 
 import sys
@@ -77,57 +79,68 @@ def make_config_dict(configuration):
     return config
 
 
-def prepare_training(configuration):
-    wdn = all_wdn_names[0]
+def prepare_training():
     print(f'\nWorking with {wdn}')
-    # print(f'\nWorking with {wdn}, network {ix_wdn + 1} of {len(all_wdn_names)}')
+    if os.path.exists('prepared_data.pkl'):
+        with open('prepared_data.pkl', 'rb') as file:
+            prepared_data = pickle.load(file)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepared_data
 
-    # retrieve wntr data
-    tra_database, val_database, tst_database = load_raw_dataset(wdn, data_folder)
-    # reduce training data
-    if cfg['tra_num'] < len(tra_database):
-        tra_database = tra_database[:cfg['tra_num']]
+    else:
+        wdn = all_wdn_names[0]
 
-    # remove PES anomaly
-    if wdn == 'PES':
-        if len(tra_database) > 4468:
-            del tra_database[4468]
-            print('Removed PES anomaly')
-            print('Check', tra_database[4468].pressure.mean())
+        # retrieve wntr data
+        tra_database, val_database, tst_database = load_raw_dataset(wdn, data_folder)
+        # reduce training data
+        if cfg['tra_num'] < len(tra_database):
+            tra_database = tra_database[:cfg['tra_num']]
 
-    # get GRAPH datasets
-    # later on we should change this and use normal scalers from scikit
-    tra_dataset, A12_bar = create_dataset(tra_database)
-    gn = GraphNormalizer()
-    gn = gn.fit(tra_dataset)
+        # remove PES anomaly
+        if wdn == 'PES':
+            if len(tra_database) > 4468:
+                del tra_database[4468]
+                print('Removed PES anomaly')
+                print('Check', tra_database[4468].pressure.mean())
 
-    tra_dataset, _ = create_dataset(tra_database, normalizer=gn)
-    val_dataset, _ = create_dataset(val_database, normalizer=gn)
-    tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
-    node_size, edge_size = tra_dataset[0].x.size(-1), tra_dataset[0].edge_attr.size(-1)
-    # number of nodes
-    junctions = (tra_database[0].node_type == 0).numpy().sum()
-    tanks = (tra_database[0].node_type == 2).numpy().sum()
-    output_nodes = junctions + tanks  # remove reservoirs
-    # dataloader
-    # transform dataset for MLP
-    # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
-    A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
-    tra_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tra_dataset)
-    checkpoint = tra_dataset_MLP[0][0][61:]
-    val_dataset_MLP = create_dataset_MLP_from_graphs(val_dataset)[0]
-    tst_dataset_MLP = create_dataset_MLP_from_graphs(tst_dataset)[0]
+        # get GRAPH datasets
+        # later on we should change this and use normal scalers from scikit
+        tra_dataset, A12_bar = create_dataset(tra_database)
+        gn = GraphNormalizer()
+        gn = gn.fit(tra_dataset)
+
+        tra_dataset, _ = create_dataset(tra_database, normalizer=gn)
+        val_dataset, _ = create_dataset(val_database, normalizer=gn)
+        tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
+        node_size, edge_size = tra_dataset[0].x.size(-1), tra_dataset[0].edge_attr.size(-1)
+        # number of nodes
+        junctions = (tra_database[0].node_type == 0).numpy().sum()
+        tanks = (tra_database[0].node_type == 2).numpy().sum()
+        output_nodes = junctions + tanks  # remove reservoirs
+        # dataloader
+        # transform dataset for MLP
+        # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
+        A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
+        tra_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tra_dataset)
+        val_dataset_MLP = create_dataset_MLP_from_graphs(val_dataset)[0]
+        tst_dataset_MLP = create_dataset_MLP_from_graphs(tst_dataset)[0]
+
+        prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
+
+        # Save the prepared data to a file
+        with open('prepared_data.pkl', 'wb') as file:
+            pickle.dump(prepared_data, file)
+
+    return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn
+
+
+def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn):
+    # configuration = wandb.config
     tra_loader = torch.utils.data.DataLoader(tra_dataset_MLP,
                                              batch_size=configuration.batch_size, shuffle=True, pin_memory=True)
     val_loader = torch.utils.data.DataLoader(val_dataset_MLP,
                                              batch_size=configuration.batch_size, shuffle=False, pin_memory=True)
     tst_loader = torch.utils.data.DataLoader(tst_dataset_MLP,
                                              batch_size=configuration.batch_size, shuffle=False, pin_memory=True)
-
-    return tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn
-
-
-def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn):
     # create results dataframe
     results_df = pd.DataFrame()
 
@@ -176,9 +189,9 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
     R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
     # Logging plots on WandB
-    wandb.log({"Minimum validation loss": np.min(val_losses)})
-    wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
-    wandb.log({"R2": wandb.Image(R2_plot + ".png")})
+    # wandb.log({"Minimum validation loss": np.min(val_losses)})
+    # wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
+    # wandb.log({"R2": wandb.Image(R2_plot + ".png")})
     # store training history and model
     pd.DataFrame(data=np.array([tra_losses, val_losses]).T).to_csv(
         f'{results_folder}/{wdn}/{algorithm}/hist.csv')
@@ -235,15 +248,21 @@ def train(configuration, tra_loader, val_loader, tst_loader, gn, indices, juncti
     # results_df.to_csv(f'{results_folder}/{wdn}/{algorithm}/results_{algorithm}.csv')
 
 
+def load_config(config_file):
+    with open(config_file, "r") as file:
+        config = yaml.safe_load(file)
+    return config
+
+
 # Main method
 if __name__ == "__main__":
-    agent = False
+    agent = True
     if not agent:
         default_config = default_configuration()
-        tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn = prepare_training(default_config)
-        train(default_config, tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
+        train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
     else:
         wandb.init()
-        tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn = prepare_training(wandb.config)
-        train(wandb.config, tra_loader, val_loader, tst_loader, gn, indices, junctions, output_nodes, wdn)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
+        train(tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
         wandb.finish()
