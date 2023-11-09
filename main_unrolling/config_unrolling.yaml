@@ -15,7 +15,7 @@ networks: ['FOS_pump_sched']
 
 
 # number of training samples to use (if < than total)
-tra_num: 100
+tra_num: 1000
 
 # model architectures to train
 algorithms:
@@ -66,10 +66,10 @@ adamParams:
 
 trainParams:
     num_epochs: 1000
-    batch_size: 64
+    batch_size: 128
 
 lossParams:
-        alpha: 0
+        alpha: 0.1
 
 earlyStopping:
     patience: 20
