@@ -54,7 +54,8 @@ class MLPDemandsOnly(nn.Module):
                     self.demand_start + demand_index_corrector + self.demand_nodes)
             demands = x[:, timeseries_start:timeseries_end]
 
-            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in list(range(self.pump_number))]
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
+                              list(range(self.pump_number))]
 
             pump_settings = x[:, pump_positions]
             input = torch.cat((pump_settings, demands), dim=1)
@@ -100,10 +101,11 @@ class MLPStatic(nn.Module):
         for step in range(num_steps):
             demand_index_corrector = self.demand_nodes * step
             timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
-                        self.demand_start + demand_index_corrector + self.demand_nodes)
+                    self.demand_start + demand_index_corrector + self.demand_nodes)
             demands = x[:, timeseries_start:timeseries_end]
 
-            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in list(range(self.pump_number))]
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
+                              list(range(self.pump_number))]
 
             pump_settings = x[:, pump_positions]
             input = torch.cat((static_features, pump_settings, demands), dim=1)
@@ -116,137 +118,61 @@ class MLPStatic(nn.Module):
         return predictions
 
 
-class MLPOld(nn.Module):
-    def __init__(self, num_outputs, hid_channels, indices, num_layers=6):
-        super(MLPOld, self).__init__()
-        torch.manual_seed(42)
-        self.hid_channels = hid_channels
-        self.indices = indices
-
-        self.total_input_length = indices[list(indices.keys())[-1]].stop
-
-        layers = [Linear(self.total_input_length, hid_channels),
-                  nn.ReLU()]
-
-        for l in range(num_layers - 1):
-            layers += [Linear(hid_channels, hid_channels),
-                       nn.ReLU()]
-
-        layers += [Linear(hid_channels, num_outputs)]
-
-        # Add input of previous one and deamdn timeseries
-        after_layers = [Linear(num_outputs, hid_channels),
-                        nn.ReLU()]
-
-        for l in range(num_layers - 1):
-            after_layers += [Linear(hid_channels, hid_channels),
-                             nn.ReLU()]
-
-        after_layers += [Linear(hid_channels, num_outputs),
-                         nn.ReLU()]
-
-        self.start = nn.Sequential(*layers)
-        self.main = nn.Sequential(*after_layers)
-
-    def forward(self, x, num_steps=1):
-
-        predictions = []
-
-        x = self.start(x)
-        predictions.append(x)
-        for step in range(num_steps - 1):
-            x = self.main(x)
-
-            predictions.append(x)
-
-        # Convert the list of predictions to a tensor
-        predictions = torch.stack(predictions, dim=1)
-
-        return predictions
-
-
-# Define your LSTM model class
-class LSTM(nn.Module):
-    def __init__(self, num_outputs, hid_channels, indices, num_layers=2):
-        super(LSTM, self).__init__()
-        self.hidden_size = hid_channels
-        self.num_layers = num_layers
-        self.output_size = num_outputs
-        self.input_size = indices[list(indices.keys())[-1]].stop
-
-        # Define the LSTM layer
-        # Check why output size is included below
-        self.lstm = nn.LSTM(self.input_size + self.output_size, self.hidden_size, num_layers, batch_first=True)
-
-        # Define the output layer
-        self.linear = nn.Linear(self.hidden_size, self.output_size)
-
-    def forward(self, static_input, num_steps=25):
-        # Initialize hidden state with zeros
-        # x = x.unsqueeze(1)
-        batch_size = static_input.size(0)
-
-        # Initial hidden state and cell state
-        h0 = torch.zeros(self.num_layers, batch_size, self.hidden_size, dtype=torch.float32).to(static_input.device)
-        c0 = torch.zeros(self.num_layers, batch_size, self.hidden_size, dtype=torch.float32).to(static_input.device)
-
-        # Initialize the output sequence with zeros
-        output_seq = torch.zeros(batch_size, num_steps, self.output_size, dtype=torch.float32).to(static_input.device)
-
-        repeated_static_input = static_input.unsqueeze(1).repeat(1, 1, 1)
-        # Iterate through time steps
-        for t in range(num_steps):
-            # Concatenate static_input with the previous output (if available)
-            if t == 0:
-                lstm_input = torch.cat((repeated_static_input, output_seq[:, t:t + 1, :]), dim=-1)
-            else:
-                lstm_input = torch.cat((repeated_static_input, output_seq[:, t - 1:t, :]), dim=-1)
-
-            h0 = h0.to(torch.float32)
-            c0 = c0.to(torch.float32)
-            # Forward pass through the LSTM
-            lstm_input = lstm_input.to(torch.float32)
-            lstm_output, (h0, c0) = self.lstm(lstm_input, (h0, c0))
-
-            # Predict the output for the current time step
-            output_seq[:, t:t + 1, :] = self.linear(lstm_output)
-
-        return output_seq.to(torch.float32)
-
-
 class BaselineUnrolling(nn.Module):
-    def __init__(self, num_outputs, indices, junctions, num_layers=6):
+    def __init__(self, num_outputs, indices, junctions, num_layers=6, hid_channels=None):
         super(BaselineUnrolling, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        self.num_heads = junctions
+        self.num_heads = junctions + indices['base_heads'].stop
+        self.demand_nodes = junctions
+        self.demand_start = indices['demand_timeseries'].start
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
         self.num_blocks = num_layers
         self.n = 1.852
 
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.static_feat_end = indices['diameter'].stop
 
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        # To calculate amount of pumps we assume that the time period is 24
+        self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
+
+        # Should this be a RELU?
         self.hid_HF = nn.ModuleList()
         self.hid_FH = nn.ModuleList()
 
         for i in range(self.num_blocks):
+            self.hid_FH.append(Sequential(
+                Linear(self.num_base_heads + self.pump_number + self.demand_nodes + self.num_flows, self.num_heads),
+                nn.ReLU()))
             self.hid_HF.append(Sequential(Linear(self.num_heads, self.num_flows), nn.ReLU()))
-            self.hid_FH.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
 
         self.out = Linear(self.num_heads, num_outputs)
 
     def forward(self, x, num_steps=1):
 
-        h0, d = torch.unsqueeze(x[:, self.indices['base_heads']], dim=2), \
-            x[:, self.indices['diameter']].float().view(-1, self.num_flows, 1),
+        d = x[:, self.indices['diameter']].float().view(-1, self.num_flows, 1)
+
+        h0 = x[:, self.indices['base_heads']]
 
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).view(-1, self.num_flows).float()
 
         predictions = []
         for step in range(num_steps):
+            demand_index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
+                    self.demand_start + demand_index_corrector + self.demand_nodes)
+            s = x[:, timeseries_start:timeseries_end]
+
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
+                              list(range(self.pump_number))]
+
+            pump_settings = x[:, pump_positions]
+
+            input = torch.cat((h0, pump_settings, s, q), dim=1)
+
             for j in range(self.num_blocks):
-                h = self.hid_FH[j](q)
+                h = self.hid_FH[j](input)
                 q = q - self.hid_HF[j](h)
 
             # Append the prediction for the current time step
@@ -262,17 +188,19 @@ class BaselineUnrolling(nn.Module):
 
 
 class UnrollingModel(nn.Module):
-    def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
+    def __init__(self, num_outputs, indices, junctions, num_layers=6, hid_channels=None):
         super(UnrollingModel, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        self.num_heads = indices['nodal_demands'].stop
+        self.num_heads = junctions + indices['base_heads'].stop
+        self.demand_nodes = junctions
+        self.demand_start = indices['demand_timeseries'].start
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
         self.num_blocks = num_layers
 
         self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
-        self.hids_q = Linear(self.num_heads, self.num_flows)  # 4.6/4.10
+        self.hids_q = Linear(self.demand_nodes, self.num_flows)  # 4.6/4.10
         self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  # 4.7/4.11
         self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  # 4.8/4.12
         self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows),
@@ -308,12 +236,11 @@ class UnrollingModel(nn.Module):
 
     def forward(self, x, num_steps=1):
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        s, h0, d, edge_features = (
-            x[:, self.indices['nodal_demands']].float(), x[:, self.indices['base_heads']].float(),
-            x[:, self.indices['diameter']].float(),
-            x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
+        h0, d, edge_features = (x[:, self.indices['base_heads']].float(),
+                                x[:, self.indices['diameter']].float(),
+                                x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
 
-        res_h0_q, res_s_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hids_q(s), self.hidh0_h(h0), self.hid_S(
+        res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(
             edge_features)
 
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow
@@ -321,6 +248,12 @@ class UnrollingModel(nn.Module):
 
         predictions = []
         for step in range(num_steps):
+            demand_index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
+                    self.demand_start + demand_index_corrector + self.demand_nodes)
+            s = x[:, timeseries_start:timeseries_end]
+            res_s_q = self.hids_q(s)
+
             for i in range(self.num_blocks):
                 A_q = self.hidA_q[i](torch.mul(q, res_S_q))  # 4.16
                 D_h = self.hidD_h[i](A_q)  # 4.17

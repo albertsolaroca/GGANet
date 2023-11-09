@@ -27,7 +27,7 @@ parameters:
   num_layers:
     values: [2, 4, 8]
   algorithm:
-    values: ['MLPStatic', 'MLPDemandsOnly']
+    values: ['BaselineUnrolling', 'UnrollingModel']
   num_epochs:
     values: [2000]
   alpha:

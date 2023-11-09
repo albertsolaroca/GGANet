@@ -1,0 +1,24 @@
+wandb_version: 1
+
+algorithm:
+  value: MLPStatic
+alpha:
+  value: 0
+batch_size:
+  value: 256
+divisor:
+  value: 10
+epoch_frequency:
+  value: 100
+hid_channels:
+  value: 32
+learning_rate:
+  value: 1.0e-05
+num_epochs:
+  value: 2000
+num_layers:
+  value: 4
+patience:
+  value: 10
+weight_decay:
+  value: 1.0e-05

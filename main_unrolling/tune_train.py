@@ -50,7 +50,10 @@ def default_configuration():
     weight_decay = cfg['adamParams']['weight_decay']
     algorithm = cfg['algorithms'][0]
     num_layers = cfg['hyperParams'][algorithm]['num_layers'][0]
-    hid_channels = cfg['hyperParams'][algorithm]['hid_channels'][0]
+    try:
+        hid_channels = cfg['hyperParams'][algorithm]['hid_channels'][0]
+    except KeyError:
+        hid_channels = 0
     weight_decay = cfg['adamParams']['weight_decay']
 
     default_config = SimpleNamespace(batch_size=batch_size, num_epochs=num_epochs, alpha=alpha,
@@ -119,7 +122,7 @@ def prepare_training():
         # dataloader
         # transform dataset for MLP
         # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
-        A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
+        # A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
         tra_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tra_dataset)
         val_dataset_MLP = create_dataset_MLP_from_graphs(val_dataset)[0]
         tst_dataset_MLP = create_dataset_MLP_from_graphs(tst_dataset)[0]
@@ -262,7 +265,7 @@ if __name__ == "__main__":
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
         train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
     else:
-        wandb.init(console=False)
+        wandb.init()
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
         train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
         wandb.finish()

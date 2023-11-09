@@ -36,9 +36,9 @@ class PowerLogTransformer(BaseEstimator, TransformerMixin):
     def inverse_transform(self, X):
         if self.log_transform:
             if self.reverse:
-                return self.max_ - np.exp(X)
+                return self.max_ - np.exp(X) + 1
             else:
-                return np.exp(X) + self.min_
+                return np.exp(X) + self.min_ - 1
         else:
             if self.reverse:
                 return self.max_ - X ** self.power

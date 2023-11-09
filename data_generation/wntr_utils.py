@@ -53,6 +53,14 @@ def load_water_network(inp_file):
 	'''
     return wntr.network.WaterNetworkModel(inp_file)
 
+def generate_binary_string(length=24, zero_probability=0.05):
+    binary_schedule = []
+    for _ in range(length):
+        if np.random.random() < zero_probability:
+            binary_schedule.append(0)
+        else:
+            binary_schedule.append(1)
+    return binary_schedule
 
 def run_wntr_simulation(wn, headloss='H-W', continuous=False):
     '''
@@ -253,8 +261,29 @@ def alter_water_network(wn, continuous, randomized_demands=None):
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
     set_attribute_all_nodes_rand(wn, continuous, randomized_demands)
+    set_attribute_all_pumps_rand(wn, continuous)
     return None
 
+def set_attribute_all_pumps_rand(wn, continuous):
+    """
+	This function changes an attribute attr_str (e.g., roughness) from all links in the network based on their orignal value.
+	The list of potential values is contained in attr_values. search_range identifies how many values to the left and to the right
+	of the original value are considered for the random selection.
+
+	Tested for: diameter, roughness
+	"""
+    # IN_TO_M = 0.0254
+
+    # if attr_str not in ['diameter', 'roughness']:
+    #     raise AttributeError('You can only change pipe roughness and diameter as link attributes.')
+
+    for id in wn.link_name_list:
+        link = wn.get_link(id)
+        if link.link_type == 'Pump':
+            pattern = wn.get_pattern(link.speed_pattern_name)
+            pattern.multipliers = generate_binary_string()
+
+    return None
 
 def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     '''
@@ -280,6 +309,7 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
                 np.random.choice(['one_person', 'two_person', 'family']))
 
     return None
+
 
 
 def set_attribute_all_links_rand(wn, attr_str, attr_values, search_range, prob_exp=0):
