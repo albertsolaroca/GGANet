@@ -15,15 +15,15 @@ networks: ['FOS_pump_sched']
 
 
 # number of training samples to use (if < than total)
-tra_num: 1000
+tra_num: 100
 
 # model architectures to train
 algorithms:
 #    - Dummy
 #    - MLPDemandsOnly
-    - MLPStatic
+#    - MLPStatic
 #    - LSTM
-#    - BaselineUnrolling
+    - BaselineUnrolling
 #    - UnrollingModel
 
 # hyper params for each model
@@ -50,23 +50,23 @@ hyperParams:
 #                - 2
 #                - 4
         BaselineUnrolling:
-            num_blocks:
-                - 1
+            num_layers:
+#                - 1
 #                - 2
-#                - 4
+                - 4
         UnrollingModel:
-            num_blocks:
-                - 1
-#                - 2
+            num_layers:
+#                - 1
+                - 2
 
 adamParams:
-    lr: 0.0001
+    lr: 0.01
     weight_decay: 0.001
 
 
 trainParams:
-    num_epochs: 500
-    batch_size: 32
+    num_epochs: 1000
+    batch_size: 64
 
 lossParams:
         alpha: 0
@@ -74,4 +74,4 @@ lossParams:
 earlyStopping:
     patience: 20
     divisor: 2
-    epoch_frequency: 20
+    epoch_frequency: 50
