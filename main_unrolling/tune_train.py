@@ -69,7 +69,7 @@ def make_config_dict(configuration):
     config = {}
     config['batch_size'] = configuration.batch_size
     config['num_epochs'] = configuration.num_epochs
-    config['alpha'] = configuration.alpha
+    config['alpha'] = 0
     config['patience'] = configuration.patience
     config['divisor'] = configuration.divisor
     config['epoch_frequency'] = configuration.epoch_frequency
@@ -180,7 +180,7 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     lr_rate = configuration.divisor
     lr_epoch = configuration.epoch_frequency
     num_epochs = configuration.num_epochs
-    alpha = configuration.alpha
+    alpha = 0
 
     model, tra_losses, val_losses, elapsed_time = training(model, optimizer, tra_loader, val_loader,
                                                            patience=patience, report_freq=0,
