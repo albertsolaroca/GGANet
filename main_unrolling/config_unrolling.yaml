@@ -11,11 +11,11 @@ seeds:
     torch: 3407
 
 # networks to use
-networks: ['FOS_pump_sched']
+network: ['FOS_tank']
 
 
 # number of training samples to use (if < than total)
-tra_num: 1000
+tra_num: 10000
 
 # model architectures to train
 algorithms:
@@ -23,8 +23,8 @@ algorithms:
 #    - MLPDemandsOnly
 #    - MLPStatic
 #    - LSTM
-    - BaselineUnrolling
-#    - UnrollingModel
+#    - BaselineUnrolling
+    - UnrollingModel
 
 # hyper params for each model
 hyperParams:
@@ -68,8 +68,8 @@ trainParams:
     num_epochs: 1000
     batch_size: 128
 
-lossParams:
-        alpha: 0.1
+#lossParams:
+#        alpha: 0
 
 earlyStopping:
     patience: 20

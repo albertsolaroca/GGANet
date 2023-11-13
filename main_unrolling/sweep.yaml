@@ -11,7 +11,7 @@ metric:
 
 parameters:
   patience:
-    values: [10, 20, 100]
+    values: [10, 20, 50]
   divisor:
     values: [2, 10]
   epoch_frequency:
@@ -19,16 +19,14 @@ parameters:
   batch_size:
     values: [256, 512, 1024]
   learning_rate:
-    values: [0.001, 0.0001, 0.00001]
+    values: [0.01, 0.001, 0.0001]
   weight_decay:
     values: [0.001, 0.0001, 0.00001]
   hid_channels:
     values: [32, 64, 128, 256, 512]
   num_layers:
-    values: [2, 4, 8]
+    values: [1, 2, 4]
   algorithm:
     values: ['BaselineUnrolling', 'UnrollingModel']
   num_epochs:
     values: [2000]
-  alpha:
-    values: [0]

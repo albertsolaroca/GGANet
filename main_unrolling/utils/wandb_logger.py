@@ -53,3 +53,19 @@ def save_response_graphs_in_ML_tracker(swmm_heads_pd, predicted_heads_pd, name_e
 
         )
     })
+
+def save_metric_graph_in_ML_tracker(dummy, real, metric_name):
+    wandb.log({metric_name: wandb.plot.line_series(
+
+        xs=[range(0,36), range(0,36)],
+
+        ys=[dummy, real],
+
+        keys=["Dummy", "Model"],
+
+        title=metric_name + " comparison",
+
+        xname="Nodes",
+
+        )
+    })

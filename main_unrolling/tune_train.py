@@ -15,9 +15,10 @@ import torch.optim as optim
 from utils.miscellaneous import read_config
 from utils.miscellaneous import create_folder_structure
 from utils.miscellaneous import initalize_random_generators
-from utils.wandb_logger import log_wandb_data, save_response_graphs_in_ML_tracker
+from utils.wandb_logger import log_wandb_data, save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
 from utils.normalization import *
 from utils.load import *
+from utils.metrics import calculate_metrics
 
 from training.train import training
 from training.test import testing
@@ -35,14 +36,15 @@ res_columns = ['train_loss', 'valid_loss', 'test_loss', 'max_train_loss', 'max_v
                'min_train_loss', 'min_valid_loss', 'min_test_loss', 'r2_train', 'r2_valid',
                'r2_test', 'total_params', 'total_time', 'test_time']
 
-all_wdn_names = cfg['networks']
 initalize_random_generators(cfg, count=0)
 
 
 def default_configuration():
     batch_size = cfg['trainParams']['batch_size']
+    network = cfg['network'][0]
+    samples = cfg['tra_num']
     num_epochs = cfg['trainParams']['num_epochs']
-    alpha = cfg['lossParams']['alpha']
+    alpha = 0
     patience = cfg['earlyStopping']['patience']
     divisor = cfg['earlyStopping']['divisor']
     epoch_frequency = cfg['earlyStopping']['epoch_frequency']
@@ -54,9 +56,8 @@ def default_configuration():
         hid_channels = cfg['hyperParams'][algorithm]['hid_channels'][0]
     except KeyError:
         hid_channels = 0
-    weight_decay = cfg['adamParams']['weight_decay']
 
-    default_config = SimpleNamespace(batch_size=batch_size, num_epochs=num_epochs, alpha=alpha,
+    default_config = SimpleNamespace(network=network, samples=samples, batch_size=batch_size, num_epochs=num_epochs, alpha=alpha,
                                      patience=patience, divisor=divisor, epoch_frequency=epoch_frequency,
                                      algorithm=algorithm,
                                      num_layers=num_layers, hid_channels=hid_channels, learning_rate=learning_rate,
@@ -67,6 +68,8 @@ def default_configuration():
 
 def make_config_dict(configuration):
     config = {}
+    config['network'] = configuration.network
+    config['samples'] = configuration.samples
     config['batch_size'] = configuration.batch_size
     config['num_epochs'] = configuration.num_epochs
     config['alpha'] = 0
@@ -82,14 +85,14 @@ def make_config_dict(configuration):
     return config
 
 
-def prepare_training():
-    wdn = all_wdn_names[0]
+def prepare_training(network):
+    wdn = network
     
     print(f'\nWorking with {wdn}')
     if os.path.exists('prepared_data.pkl'):
         with open('prepared_data.pkl', 'rb') as file:
             prepared_data = pickle.load(file)
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepared_data
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepared_data
 
     else:
         # retrieve wntr data
@@ -127,16 +130,16 @@ def prepare_training():
         val_dataset_MLP = create_dataset_MLP_from_graphs(val_dataset)[0]
         tst_dataset_MLP = create_dataset_MLP_from_graphs(tst_dataset)[0]
 
-        prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
+        prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes)
 
         # Save the prepared data to a file
         with open('prepared_data.pkl', 'wb') as file:
             pickle.dump(prepared_data, file)
 
-    return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn
+    return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes
 
 
-def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn):
+def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes):
     # configuration = wandb.config
     tra_loader = torch.utils.data.DataLoader(tra_dataset_MLP,
                                              batch_size=configuration.batch_size, shuffle=True, pin_memory=True)
@@ -155,6 +158,7 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     combination['indices'] = indices
     combination['junctions'] = junctions
     combination['num_outputs'] = output_nodes
+    wdn = configuration.network
 
     # create folder structure
     results_folder = create_folder_structure("MLPs", algorithm, wdn,
@@ -171,7 +175,6 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     total_parameters = sum(p.numel() for p in model.parameters())
 
     # model optimizer
-
     optimizer = optim.Adam(params=model.parameters(), betas=(0.9, 0.999),
                            lr=configuration.learning_rate, weight_decay=configuration.weight_decay)
 
@@ -192,7 +195,7 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
     # Logging plots on WandB
-    wandb.log({"val_loss": np.min(val_losses)})
+    wandb.log({"min_val_loss": np.min(val_losses)})
     wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
     wandb.log({"R2": wandb.Image(R2_plot + ".png")})
     # store training history and model
@@ -241,6 +244,11 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     for i in [0, 1, 7, 36]:
         names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Random Node', 36: 'Tank'}
         save_response_graphs_in_ML_tracker(real, pred, names[i], i)
+    dummy = Dummy().evaluate(real)
+    dict_metrics, dummy, model = calculate_metrics(real, dummy, pred)
+    wandb.log(dict_metrics)
+
+    save_metric_graph_in_ML_tracker(dummy, model, "NSE")
 
     # save graph normalizer
     # with open(f'{results_folder}/{wdn}/{algorithm}/gn.pickle', 'wb') as handle:
@@ -262,10 +270,10 @@ if __name__ == "__main__":
     agent = True
     if not agent:
         default_config = default_configuration()
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
-        train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(default_config.network)
+        train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes)
     else:
         wandb.init()
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn = prepare_training()
-        train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, wdn)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(wandb.config.network)
+        train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes)
         wandb.finish()

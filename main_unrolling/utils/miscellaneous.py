@@ -69,7 +69,7 @@ def create_folder_structure_MLPvsGNN(cfg, parent_folder='./results', max_trials=
     folder_name = cfg['exp_name']
     # retrieve here list of architectures
     algorithms = cfg['algorithms']
-    networks = cfg['networks']
+    networks = cfg['network']
 
     create_folder_flag = True
     counter = 0

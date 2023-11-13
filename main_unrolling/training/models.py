@@ -137,7 +137,6 @@ class BaselineUnrolling(nn.Module):
         # To calculate amount of pumps we assume that the time period is 24
         self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
 
-        # Should this be a RELU?
         self.hid_HF = nn.ModuleList()
         self.hid_FH = nn.ModuleList()
 
@@ -198,11 +197,16 @@ class UnrollingModel(nn.Module):
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
         self.num_blocks = num_layers
+        self.static_feat_end = indices['diameter'].stop
+        # To calculate amount of pumps we assume that the time period is 24
+        self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
+
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
         self.hids_q = Linear(self.demand_nodes, self.num_flows)  # 4.6/4.10
         self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  # 4.7/4.11
-        self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  # 4.8/4.12
+        self.hidh0_q = Linear(self.num_base_heads + self.pump_number, self.num_flows)  # 4.8/4.12
         self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows),
                                 nn.ReLU())  # 4.9/4.13
 
@@ -240,7 +244,7 @@ class UnrollingModel(nn.Module):
                                 x[:, self.indices['diameter']].float(),
                                 x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
 
-        res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(
+        res_h0_h, res_S_q =  self.hidh0_h(h0), self.hid_S(
             edge_features)
 
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow
@@ -252,6 +256,14 @@ class UnrollingModel(nn.Module):
             timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
                     self.demand_start + demand_index_corrector + self.demand_nodes)
             s = x[:, timeseries_start:timeseries_end]
+
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
+                              list(range(self.pump_number))]
+
+            pump_settings = x[:, pump_positions]
+            heads_and_pump = torch.cat((h0, pump_settings), dim=1)
+            res_h0_q = self.hidh0_q(heads_and_pump)
+
             res_s_q = self.hids_q(s)
 
             for i in range(self.num_blocks):

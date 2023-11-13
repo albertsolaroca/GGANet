@@ -100,9 +100,13 @@ def run_wntr_simulation(wn, headloss='H-W', continuous=False):
     else:
         wn.options.time.duration = 0
 
+    start_time = time.time()
     sim = wntr.sim.EpanetSimulator(wn)
     results = sim.run_sim(version=2.2)
 
+    end_time = time.time()
+
+    print(f"Simulation time: {end_time - start_time}")
     return results
 
 
@@ -300,13 +304,22 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
             wn.add_pattern(f'demand_pattern_{i}',
                            randomized_demands[i])
 
+    total_demands = []
+
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.0000012
+        node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.000002
+        base_val = node.demand_timeseries_list[0].base_value
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if continuous:
             node.demand_timeseries_list[0].pattern_name = 'demand_pattern_{}'.format(
                 np.random.choice(['one_person', 'two_person', 'family']))
+            this_demand = base_val * wn.get_pattern(node.demand_timeseries_list[0].pattern_name).multipliers
+
+        this_demand = this_demand * 3600
+        total_demands.append(sum(this_demand))
+
+    print(sum(total_demands))
 
     return None
 
