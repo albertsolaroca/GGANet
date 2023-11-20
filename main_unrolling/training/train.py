@@ -96,11 +96,11 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             batch = batch.to(device)
 
             # Model prediction
-            preds = model.double()(batch)
+            preds = model.to(device)(batch)
 
             # loss function = MSE if alpha=0
             # loss = smooth_loss(preds, batch, alpha=alpha)
-            loss = nn.MSELoss()(preds, batch.y.to(device).double().view(-1,1))
+            loss = nn.MSELoss()(preds, batch.y.double().to(device).view(-1,1))
 
         elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
             # Load data to device
@@ -114,10 +114,6 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             # MSE loss function
             loss = nn.MSELoss()(preds, y)
 
-        # Normalization to have more representative loss values
-        if normalization is not None:
-            loss *= normalization['pressure']
-
         losses.append(loss.cpu().detach())
 
         # Backpropagate and update weights
@@ -129,7 +125,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
 
 def training(model, optimizer, train_loader, val_loader,
-             n_epochs, patience=10, report_freq=10, alpha=0, lr_rate=10, lr_epoch=50, normalization=None,
+             n_epochs, patience=10, report_freq=100, alpha=0, lr_rate=10, lr_epoch=5000, normalization=None,
              device=None, path = None):
     '''
     Training function which returns the training and validation losses over the epochs
@@ -156,9 +152,6 @@ def training(model, optimizer, train_loader, val_loader,
     train_losses = []
     val_losses = []
 
-    # initialize early stopping variable
-    early_stop = 0
-
     # start measuring time
     start_time = time.time()
     early_stopping = EarlyStopping(patience=patience, delta=1e-3, path=path + 'checkpoint.pt')
@@ -181,22 +174,17 @@ def training(model, optimizer, train_loader, val_loader,
             optimizer = optim.Adam(model.parameters(), lr=learning_rate)
             print("Learning rate is divided by ", lr_rate, "to:", learning_rate)
 
-            # Routine for early stopping
+        #Routine for early stopping
         early_stopping(val_loss, model)
         if early_stopping.early_stop:
             print("Early Stopping")
             break
 
-        # Print R^2
-        if report_freq == 0:
-            continue
-        elif epoch % report_freq == 0:
-            train_R2 = plot_R2(model, train_loader, show=False)
-            val_R2 = plot_R2(model, val_loader, show=False)
-            # test_R2 = plot_R2(model, test_loader, show=False)
-            print("epoch:", epoch, "\t loss:", np.round(train_losses[-1], 2),
-                  "m\t train R2:", np.round(train_R2, 4),
-                  "\t val R2:", np.round(val_R2, 4)
+        # Print loss
+        if epoch % report_freq == 0:
+            print("epoch:", epoch,
+                  "\t train MSE:", np.round(train_loss, 4),
+                  "\t val MSE:", np.round(val_loss, 4)
                   )
 
     elapsed_time = time.time() - start_time
