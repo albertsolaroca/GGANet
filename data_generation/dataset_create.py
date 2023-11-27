@@ -39,7 +39,7 @@ if __name__ == '__main__':
                     randomized_demands = None
 
                 create_and_save(network, path, n_trials=trials, out_path=out_path,
-                                max_fails=100 * trials, continuous=continuous, randomized_demands=randomized_demands)
+                                max_fails=10 * trials, continuous=continuous, randomized_demands=randomized_demands)
 
             except Exception as e:
                 print(e)

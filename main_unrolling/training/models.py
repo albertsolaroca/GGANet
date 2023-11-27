@@ -18,9 +18,9 @@ class Dummy():
         return mean
 
 
-class MLPDemandsOnly(nn.Module):
+class MLPDynamicOnly(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
-        super(MLPDemandsOnly, self).__init__()
+        super(MLPDynamicOnly, self).__init__()
         torch.manual_seed(42)
         self.hid_channels = hid_channels
         self.indices = indices
