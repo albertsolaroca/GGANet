@@ -41,15 +41,14 @@ def testing(model, loader, alpha=0, normalization=None):
             # if loop is needed to separate pytorch and pyg dataloaders
             if isinstance(loader, torch_geometric.loader.dataloader.DataLoader):
                 # Load data to device
-                real.append(batch.y)
+                real.append(batch.y.cpu())
                 y = batch.y.to(device)
 
-                # GNN model prediction
-                out = model.float()(batch)
+                out = model.to(device).float()(batch)
                 pred.append(out.detach().cpu().numpy())
 
                 # loss function = MSE if alpha=0
-                loss = nn.MSELoss()(out, y.view(-1,1))
+                loss = nn.MSELoss()(out.view(-1,1), y)
 
             elif isinstance(loader, torch.utils.data.dataloader.DataLoader):
                 # Load data to device
@@ -60,9 +59,9 @@ def testing(model, loader, alpha=0, normalization=None):
 
                 # ANN model prediction
                 if len(y.shape) > 2:
-                    out = model.float()(x, y.shape[1])
+                    out = model.to(device).float()(x, y.shape[1])
                 else:
-                    out = model.float()(x)
+                    out = model.to(device).float()(x)
                 pred.append(out.detach().cpu().numpy())
 
                 # MSE loss function
@@ -70,11 +69,11 @@ def testing(model, loader, alpha=0, normalization=None):
 
             # Normalization to have more representative loss values
             if normalization is not None:
-                out = normalization.inverse_transform_array(pred[-1], 'pressure').flatten()
-                y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'pressure').flatten()
+                out = normalization.inverse_transform_array(pred[-1], 'head').flatten()
+                y = normalization.inverse_transform_array(y.detach().cpu().numpy(), 'head').flatten()
                 loss = nn.MSELoss()(out, y)
 
-            losses.append(torch.sqrt(loss).cpu().detach())
+            losses.append(loss.cpu().detach())
 
         preds = np.concatenate(pred).reshape(-1, 1)
         reals = np.concatenate(real).reshape(-1, 1)

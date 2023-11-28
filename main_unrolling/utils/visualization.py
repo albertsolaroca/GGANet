@@ -71,21 +71,19 @@ def plot_R2(model, loader, name=None, show=True, normalization=None):
 
     if show:
         if normalization is not None:
-            pred = normalization.inverse_transform_array(pred, 'pressure')
-            real = normalization.inverse_transform_array(real, 'pressure')
+            pred = normalization.inverse_transform_array(pred, 'head')
+            real = normalization.inverse_transform_array(real, 'head')
 
         MIN = min(pred.min(), real.min())
         MAX = max(pred.max(), real.max())
 
         plt.scatter(pred, real, alpha=0.01)
         plt.plot([MIN, MAX], [MIN, MAX], 'k-')
-        plt.xlim([0, MAX])
-        plt.ylim([0, MAX])
+        plt.xlim([MIN, MAX])
+        plt.ylim([MIN, MAX])
         plt.title("Prediction vs Real")
         plt.xlabel('Predicted pressure [m]')
         plt.ylabel('Real pressure [m]')
-        # plt.show()
-
 
         if name is not None:
             plt.savefig(name)

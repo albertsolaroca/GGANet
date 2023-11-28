@@ -26,6 +26,7 @@ algorithms:
 #    - BaselineUnrolling
 #    - UnrollingModel
 
+
 # hyper params for each model
 hyperParams:
         Dummy:
@@ -67,6 +68,7 @@ adamParams:
 trainParams:
     num_epochs: 1000
     batch_size: 128
+
 
 #lossParams:
 #        alpha: 0

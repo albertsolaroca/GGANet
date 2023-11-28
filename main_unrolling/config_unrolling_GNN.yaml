@@ -20,22 +20,33 @@ tra_num: 8000
 
 # model architectures to train
 algorithms:
-    - NeumannEPANET
+    - GNN_ChebConv
 # # hyper params for each model
 hyperParams:
-    NeumannEPANET:
-        K:
+    GNN_ChebConv:
+        hid_channels:
+            # - 32
+            - 64
+            - 128
+            #- 256
+        edge_channels:
+            - 32
+            - 64
+        depth:
             - 1
-#            - 10
-#            - 100
-#            - 250
+            - 2
+            - 3
+        CC_K:
+            - 3
+            - 6
+
 adamParams:
     lr: 0.001
     weight_decay: 0
 
 
 trainParams:
-    num_epochs: 40
+    num_epochs: 100
     batch_size: 256
 
 lossParams:
