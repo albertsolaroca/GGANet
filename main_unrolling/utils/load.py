@@ -15,7 +15,9 @@ DEMAND_TIMESERIES = slice(3, 27)
 # The following three indexes describe edges in the edge_attr torch vector
 DIAMETER_INDEX = 0
 EDGE_TYPE_INDEX = 1
-SCHEDULE_TIMESERIES = slice(2, 26)
+COEFF_R_INDEX = 2
+COEFF_N_INDEX = 3
+SCHEDULE_TIMESERIES = slice(4, 28)
 # The following three indexes describe the node types inside the x torch vector -> NODE_TYPE_INDEX variable
 JUNCTION_TYPE = 0
 RESERVOIR_TYPE = 1
@@ -61,12 +63,9 @@ def create_dataset(database, normalizer=None, output='pressure'):
 
         # Node attributes
 
-        # The head below is junctions plus reservoirs (plus tanks when implemented)
-        head = i.pressure + i.base_head + i.elevation
         # type_1H is equal to 1 when the node is a reservoir and 2 when it's a tank
 
-        # We want to make the tuple that constructs a node of any type
-
+        # The head below is junctions plus reservoirs plus tanks
         head = i.elevation + i.base_head + i.initial_level
         network_characteristics = torch.stack(
             (head, i.node_diameter, i.node_type), dim=1).float()
@@ -91,7 +90,8 @@ def create_dataset(database, normalizer=None, output='pressure'):
         # graph.edge_attr = torch.stack((diameter, length, roughness), dim=1).float()
         edge_characteristics = torch.stack((i.diameter, i.num_edge_type), dim=1)
         pump_schedules = i.schedule
-        graph.edge_attr = torch.cat((edge_characteristics, pump_schedules), dim=1).float()
+        pump_coefficients = torch.stack((i.coeff_r, i.coeff_n), dim=1)
+        graph.edge_attr = torch.cat((edge_characteristics, pump_coefficients, pump_schedules), dim=1).float()
 
 
         # If the length of the shape of pressure was 2 then it means that the simulation was continuous
@@ -117,7 +117,8 @@ def create_dataset(database, normalizer=None, output='pressure'):
     return graphs, A12
 
 
-def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', 'pump_schedules', 'demand_timeseries'], no_res_out=True):
+def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', 'coeff_r', 'coeff_n',
+                                                     'pump_schedules', 'demand_timeseries',], no_res_out=True):
     # index edges to avoid duplicates: this considers all graphs to be UNDIRECTED!
     ix_edge = graphs[0].edge_index.numpy().T
     ix_edge = (ix_edge[:, 0] < ix_edge[:, 1])
@@ -141,8 +142,11 @@ def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', '
             elif feature == 'pump_schedules':
                 x_ = item.edge_attr[ix_pump, SCHEDULE_TIMESERIES]
             elif feature == 'demand_timeseries':
-                # remove reservoirs
                 x_ = item.x[ix_junct, DEMAND_TIMESERIES]
+            elif feature == 'coeff_r':
+                x_ = item.edge_attr[ix_pump, COEFF_R_INDEX]
+            elif feature == 'coeff_n':
+                x_ = item.edge_attr[ix_pump, COEFF_N_INDEX]
             else:
                 raise ValueError(f'Feature {feature} not supported.')
 
@@ -160,7 +164,6 @@ def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', '
                 X = torch.cat((X, x.reshape(len(graphs), -1)), dim=1)
             else:
                 X = torch.cat((X, x.reshape(len(graphs), -1)), dim=1)
-
         if prev_feature:
             indices[feature] = slice(indices[prev_feature].stop, X.shape[1], 1)
         else:

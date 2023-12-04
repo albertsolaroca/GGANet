@@ -20,10 +20,10 @@ tra_num: 1000
 # model architectures to train
 algorithms:
 #    - Dummy
-    - MLPDynamicOnly
+#    - MLPDynamicOnly
 #    - MLPStatic
 #    - LSTM
-#    - BaselineUnrolling
+    - BaselineUnrolling
 #    - UnrollingModel
 
 

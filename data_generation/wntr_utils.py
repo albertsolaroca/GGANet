@@ -285,7 +285,12 @@ def set_attribute_all_pumps_rand(wn, continuous):
         link = wn.get_link(id)
         if link.link_type == 'Pump':
             pattern = wn.get_pattern(link.speed_pattern_name)
-            pattern.multipliers = generate_binary_string()
+            if pattern is None:
+                wn.add_pattern(link.name + "_pattern", generate_binary_string())
+                # pattern = wn.get_pattern(link.name + "_pattern")
+                link.speed_pattern_name = link.name + "_pattern"
+            else:
+                pattern.multipliers = generate_binary_string()
 
     return None
 
@@ -493,7 +498,6 @@ def from_wntr_to_nx(wn, continuous):
                     sG_WDS[u][v]['schedule'] = torch.tensor(np.array([0] * 24))
 
                 elif sG_WDS[u][v]['type'] == 'Pump':
-                    # Only handling Power Pumps for now
                     sG_WDS[u][v]['name'] = edge[1].name
                     sG_WDS[u][v]['diameter'] = 0
                     # sG_WDS[u][v]['length'] = 0
