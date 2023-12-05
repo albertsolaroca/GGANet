@@ -7,7 +7,7 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from torch_geometric.utils import to_networkx
 
 from main_unrolling.training.models import Dummy
-from main_unrolling.training.test import testing
+from main_unrolling.training.test import testing, testing_plain
 from main_unrolling.utils.load import load_raw_dataset
 from tune_train import prepare_training, default_configuration
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
-    model_path = 'experiments/unrolling_WDN0078/FOS_pump_sched/BaselineUnrolling/model.pickle'
+    model_path = 'experiments/unrolling_WDN0001/FOS_pump_sched/BaselineUnrolling/model.pickle'
     with open(model_path, 'rb') as handle:
         model = torch.load(handle)
         model.eval()
@@ -98,7 +98,8 @@ if __name__ == "__main__":
     # output = gn.inverse_transform_array(output, 'pressure')
     # print(output)
 
-    _, _, _, pred, real, timed = testing(model, tst_loader, normalization=gn)
+    pred, real, elapsed_time = testing_plain(model, tst_loader, normalization=gn)
+    print("TIME TAKEN: ", elapsed_time)
     pred = gn.inverse_transform_array(pred, 'pressure')
     real = gn.inverse_transform_array(real, 'pressure')
     pred = pred.reshape(-1, output_nodes)

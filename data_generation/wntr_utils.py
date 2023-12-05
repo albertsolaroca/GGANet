@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
 import wntr
+import wntr.epanet.toolkit as etk
 import networkx as nx
 from tqdm import tqdm
 import math
@@ -53,7 +54,7 @@ def load_water_network(inp_file):
 	'''
     return wntr.network.WaterNetworkModel(inp_file)
 
-def generate_binary_string(length=24, zero_probability=0.05):
+def generate_binary_string(length=24, zero_probability=0.2):
     binary_schedule = []
     for _ in range(length):
         if np.random.random() < zero_probability:
@@ -106,8 +107,9 @@ def run_wntr_simulation(wn, headloss='H-W', continuous=False):
 
     end_time = time.time()
 
-    # print(f"Simulation time: {end_time - start_time}")
-    return results
+    time_taken = end_time - start_time
+
+    return results, time_taken
 
 
 def get_attribute_all_nodes(wn, attr_str):
@@ -264,7 +266,7 @@ def alter_water_network(wn, continuous, randomized_demands=None):
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
-    set_attribute_all_nodes_rand(wn, continuous, randomized_demands)
+    # set_attribute_all_nodes_rand(wn, continuous, randomized_demands)
     set_attribute_all_pumps_rand(wn, continuous)
     return None
 
@@ -313,7 +315,8 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
 
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
-        node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.000002
+        # Don't change the base_value of the nodes
+        # node.demand_timeseries_list[0].base_value = np.random.choice(range(0, 1000)) * 0.000002
         # base_val = node.demand_timeseries_list[0].base_value
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if continuous:
@@ -396,15 +399,23 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     for feat in node_feats:
         res_dict[feat] = get_attribute_all_nodes(wn, feat)
     # get output == pressure, after running simulation
-    sim = run_wntr_simulation(wn, headloss='H-W', continuous=continuous)
+    try:
+        sim, time = run_wntr_simulation(wn, headloss='H-W', continuous=continuous)
+    except etk.EpanetException as e:
+        if e.args[0] == 'EPANET Error 110':
+            return None, None, None, 0
+        else:
+            raise
+
     res_dict['pressure'] = sim.node['pressure'].squeeze()
     res_dict['flowrate'] = sim.link['flowrate'].squeeze()
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
+
     sim_check = ((res_dict['pressure'][ix] > 1).all()) & (sim.error_code == None)
     res_dict['network_name'] = network
     res_dict['network'] = wn
-    return res_dict, sim, sim_check
+    return res_dict, sim, sim_check, time
 
 
 def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None, count=2):
@@ -413,13 +424,16 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
     """
     n_fails = 0
     dataset = []
-
+    times = []
     for i in tqdm(range(n_trials), network):
         flag = False
         while not flag:
             if i != 0 and i % 1000 == 0:
                 randomized_demands = demand_generation.generate_demand_patterns()
-            res_dict, _, flag = get_dataset_entry(network, path, continuous, randomized_demands=randomized_demands)
+            res_dict, _, flag, time = get_dataset_entry(network, path, continuous, randomized_demands=randomized_demands)
+            # Append time to measure how long it takes to generate the dataset
+            times.append(time)
+
             # The flag below is used to check if the simulation is correct
             # It is one boolean for steady state but a list for the continuous options
 
@@ -439,7 +453,7 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
             if n_fails >= max_fails:
                 raise RecursionError(f'Max number of fails ({max_fails}) reached.')
         dataset.append(res_dict)
-    print("Total number of fails was ", n_fails)
+    print("Total number of fails was", n_fails, "average time taken was", sum(times) / len(times))
     return dataset
 
 
@@ -528,10 +542,7 @@ def from_wntr_to_nx(wn, continuous):
                     sG_WDS[u][v]['coeff_n'] = C  # Coeff N = C
 
                     speed_pattern = wn.get_pattern(edge[1].speed_pattern_name).multipliers
-                    if speed_pattern is None:
-                        sG_WDS[u][v]['schedule'] = [0] * 24
-                    else:
-                        sG_WDS[u][v]['schedule'] = torch.tensor(speed_pattern)
+                    sG_WDS[u][v]['schedule'] = torch.tensor(speed_pattern)
 
                 else:
                     print(sG_WDS[u][v]['type'], u, v)
@@ -553,7 +564,7 @@ def from_wntr_to_nx(wn, continuous):
                 pattern_name = wn_nodes[i][1].demand_timeseries_list.to_list()[0]['pattern_name']
 
                 multipliers = wn.get_pattern(pattern_name).multipliers
-                # Not sure about the multiplicatiobn below. Shouldn't really matter anyway
+                # Not sure about the multiplication below. Shouldn't really matter anyway
                 value = wn_nodes[i][1].demand_timeseries_list[0].base_value * 1000
                 mul_val = multipliers * value
                 sG_WDS.nodes[u]['demand_timeseries'] = torch.tensor(mul_val)
