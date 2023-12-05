@@ -283,7 +283,7 @@ class UnrollingModel(nn.Module):
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
         self.num_blocks = num_layers
-        self.static_feat_end = indices['diameter'].stop
+        self.static_feat_end = indices['pump_schedules'].start
         # To calculate amount of pumps we assume that the time period is 24
         self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
 
@@ -340,7 +340,7 @@ class UnrollingModel(nn.Module):
             res_s_q = self.hids_q(s)
 
             for i in range(self.num_blocks - 1):
-                D_q = self.hidD_q[i](torch.cat((torch.mul(q, res_S_q), pump_settings * coeff_r * (q ** coeff_n)), dim=1))
+                D_q = self.hidD_q[i](torch.cat((torch.mul(q, res_S_q), pump_settings), dim=1))
                 D_h = self.hidD_h[i](D_q)
                 hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
                 h = self.hid_fh[i](hid_x)
