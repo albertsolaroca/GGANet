@@ -12,6 +12,8 @@ from tqdm import tqdm
 import sys
 import os
 
+from .models import UnrollingModel
+
 # Get the directory one level above your script's location
 directory_above = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -143,7 +145,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
         # Backpropagate and update weights
         loss.backward()
         # Clip to prevent exploding gradients
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
 
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)

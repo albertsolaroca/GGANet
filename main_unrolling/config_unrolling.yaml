@@ -11,18 +11,17 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_sched']
+network: ['EPANET Net 3']
 
 
 # number of training samples to use (if < than total)
-tra_num: 1000
+tra_num: 10000
 
 # model architectures to train
 algorithms:
 #    - Dummy
 #    - MLPDynamicOnly
 #    - MLPStatic
-#    - LSTM
     - BaselineUnrolling
 #    - UnrollingModel
 
@@ -42,24 +41,18 @@ hyperParams:
                 - 128
             num_layers:
                 - 2
-        LSTM:
-            hid_channels:
-#                - 128
-                - 32
-            num_layers:
-                - 1
-#                - 2
-#                - 4
         BaselineUnrolling:
             num_layers:
 #                - 1
                 - 2
+#                - 3
 #                - 4
         UnrollingModel:
             num_layers:
 #                - 1
                 - 2
-
+#                - 3
+#                - 4
 adamParams:
     lr: 0.01
     weight_decay: 0.001

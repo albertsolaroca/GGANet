@@ -266,11 +266,11 @@ def alter_water_network(wn, continuous, randomized_demands=None):
 	At the moment, these are expressed as arrays containing all possible values. No changes are made if d_attr=None.
 	No changes are made to a particular attribute if it is not in the keys of d_attr.
 	'''
-    # set_attribute_all_nodes_rand(wn, continuous, randomized_demands)
-    set_attribute_all_pumps_rand(wn, continuous)
+    set_attribute_all_nodes_rand(wn, continuous, randomized_demands)
+    set_attribute_all_pumps_rand(wn)
     return None
 
-def set_attribute_all_pumps_rand(wn, continuous):
+def set_attribute_all_pumps_rand(wn):
     """
 	This function changes an attribute attr_str (e.g., roughness) from all links in the network based on their orignal value.
 	The list of potential values is contained in attr_values. search_range identifies how many values to the left and to the right
@@ -704,7 +704,7 @@ def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, contin
 
     start_time = time.time()
     all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous,
-                               randomized_demands=randomized_demands, count=0)
+                               randomized_demands=randomized_demands, count=2)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"Execution time: {execution_time:.6f} seconds\n")

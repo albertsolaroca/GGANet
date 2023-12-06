@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
-    model_path = 'experiments/unrolling_WDN0001/FOS_pump_sched/BaselineUnrolling/model.pickle'
+    model_path = 'experiments/unrolling_WDN0090/FOS_pump_sched/UnrollingModel/model.pickle'
     with open(model_path, 'rb') as handle:
         model = torch.load(handle)
         model.eval()
