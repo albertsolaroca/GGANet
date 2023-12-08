@@ -1,0 +1,38 @@
+program: tune_train.py
+
+method: random
+
+project: unrolling-epanet-sweeps
+entity: mertz
+
+metric:
+  name: val_loss
+  goal: minimize
+
+parameters:
+  network:
+    values: ['EPANET Net 3', 'ky2', 'PA2']
+  samples:
+    values: [1000]
+  patience:
+    values: [10, 20]
+  divisor:
+    values: [2, 10]
+  epoch_frequency:
+    values: [10, 50, 100]
+  batch_size:
+    values: [256, 512, 1024]
+  learning_rate:
+    values: [0.01, 0.001]
+  weight_decay:
+    values: [0.001, 0.0001, 0.00001]
+  hid_channels:
+    values: [32]
+  num_layers:
+    values: [2, 3]
+  clipper:
+    values: [1, 0.1]
+  algorithm:
+    values: ['BaselineUnrolling', 'UnrollingModel']
+  num_epochs:
+    values: [1000]

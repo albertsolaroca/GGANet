@@ -12,9 +12,7 @@ import wandb
 
 import torch.optim as optim
 
-from utils.miscellaneous import read_config
-from utils.miscellaneous import create_folder_structure
-from utils.miscellaneous import initalize_random_generators
+from utils.miscellaneous import read_config, create_folder_structure, initalize_random_generators
 from utils.wandb_logger import save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
 from utils.normalization import *
 from utils.load import *
@@ -50,7 +48,7 @@ def default_configuration():
 
     default_config = SimpleNamespace(network=network, samples=samples, batch_size=batch_size, num_epochs=num_epochs, alpha=alpha,
                                      patience=patience, divisor=divisor, epoch_frequency=epoch_frequency, algorithm=algorithm,
-                                     num_layers=num_layers, hid_channels=hid_channels, learning_rate=learning_rate, weight_decay=weight_decay)
+                                     num_layers=num_layers, hid_channels=hid_channels, learning_rate=learning_rate, weight_decay=weight_decay, clipper=100)
 
     return default_config
 
@@ -124,8 +122,8 @@ def prepare_training(network, samples):
         prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes)
 
         # Save the prepared data to a file
-        with open(wdn + '_prep_data.pkl', 'wb') as file:
-            pickle.dump(prepared_data, file)
+        # with open(wdn + '_prep_data.pkl', 'wb') as file:
+        #     pickle.dump(prepared_data, file)
 
     return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes
 
@@ -159,6 +157,8 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # model creation
     model = getattr(sys.modules[__name__], algorithm)(**combination).float().to(device)
+    if agent:
+        wandb.watch(model, log='all')
 
     # get combination dictionary to determine how are indices made
     # print("Model", model, combination)
@@ -174,17 +174,22 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     lr_rate = configuration.divisor
     lr_epoch = configuration.epoch_frequency
     num_epochs = configuration.num_epochs
+    if configuration.clipper:
+        max_norm = configuration.clipper
+    else:
+        max_norm = None
     alpha = 0
 
     model, tra_losses, val_losses, elapsed_time = training(model, optimizer, tra_loader, val_loader,
                                                            patience=patience, report_freq=0,
-                                                           n_epochs=num_epochs,
+                                                           n_epochs=num_epochs, max_norm=max_norm,
                                                            alpha=alpha, lr_rate=lr_rate, lr_epoch=lr_epoch,
                                                            normalization=None,
                                                            path=f'{results_folder}/{wdn}/{algorithm}/')
     loss_plot = plot_loss(tra_losses, val_losses, f'{results_folder}/{wdn}/{algorithm}/loss')
     R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
+    wandb.unwatch(model)
     # store training history and model
     pd.DataFrame(data=np.array([tra_losses, val_losses]).T).to_csv(
         f'{results_folder}/{wdn}/{algorithm}/hist.csv')
@@ -243,7 +248,7 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
         wandb.log({"R2": wandb.Image(R2_plot + ".png")})
         wandb.log(dict_metrics)
 
-        save_metric_graph_in_ML_tracker(dummy, model, "NSE")
+        save_metric_graph_in_ML_tracker(dummy_scores, model_scores, "NSE")
 
     # save graph normalizer
     # with open(f'{results_folder}/{wdn}/{algorithm}/gn.pickle', 'wb') as handle:
@@ -262,7 +267,7 @@ def load_config(config_file):
 
 # Main method
 if __name__ == "__main__":
-    agent = False
+    agent = True
     if not agent:
         default_config = default_configuration()
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(default_config.network, default_config.samples)

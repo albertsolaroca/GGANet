@@ -1,9 +1,9 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['FOS_pump_sched_3'],
+dataset_names : ['FOS_pump_sched_10k'],
 
 # number of trials
-n_trials : [10],
+n_trials : [10000],
 
 }

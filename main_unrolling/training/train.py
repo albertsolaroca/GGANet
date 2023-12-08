@@ -79,7 +79,7 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 
-def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=None):
+def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=None, max_norm=None):
     '''
     Function that trains a model for one iteration
     It can work both for ANN and GNN models (which require different DataLoaders)
@@ -145,7 +145,8 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
         # Backpropagate and update weights
         loss.backward()
         # Clip to prevent exploding gradients
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
+        if max_norm is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
@@ -156,7 +157,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
 
 def training(model, optimizer, train_loader, val_loader,
              n_epochs, patience=10, report_freq=10, alpha=0, lr_rate=10, lr_epoch=50, normalization=None,
-             device=None, path=None):
+             device=None, path=None, max_norm=None):
     '''
     Training function which returns the training and validation losses over the epochs
     Learning rate scheduler and early stopping routines working correctly
@@ -193,7 +194,7 @@ def training(model, optimizer, train_loader, val_loader,
     for epoch in tqdm(range(1, n_epochs + 1)):
         # Model training
         train_loss = train_epoch(model, train_loader, optimizer, alpha=alpha, normalization=normalization,
-                                 device=device)
+                                 device=device, max_norm=max_norm)
 
         # Model validation
         val_loss, _, _, _, _, _ = testing(model, val_loader, alpha=alpha, normalization=normalization)

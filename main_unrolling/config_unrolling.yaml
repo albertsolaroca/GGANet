@@ -15,15 +15,15 @@ network: ['EPANET Net 3']
 
 
 # number of training samples to use (if < than total)
-tra_num: 10000
+tra_num: 1000
 
 # model architectures to train
 algorithms:
 #    - Dummy
 #    - MLPDynamicOnly
 #    - MLPStatic
-    - BaselineUnrolling
-#    - UnrollingModel
+#    - BaselineUnrolling
+    - UnrollingModel
 
 
 # hyper params for each model
@@ -50,8 +50,8 @@ hyperParams:
         UnrollingModel:
             num_layers:
 #                - 1
-                - 2
-#                - 3
+#                - 2
+                - 3
 #                - 4
 adamParams:
     lr: 0.01
@@ -59,7 +59,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 1000
+    num_epochs: 100
     batch_size: 128
 
 

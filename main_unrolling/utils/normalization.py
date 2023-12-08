@@ -124,12 +124,14 @@ class GraphNormalizer:
         '''
         return torch.tensor(self.scalers[feat_name].transform(z).reshape(-1))
 
-    def inverse_transform_array(self, z, feat_name):
+    def inverse_transform_array(self, z, feat_name, reshape=True):
         '''
             This is for MLP dataset; it can be done better (the entire thing, from raw data to datasets)
         '''
-        return torch.tensor(self.scalers[feat_name].inverse_transform(z).reshape(-1))
-
+        if reshape:
+            return torch.tensor(self.scalers[feat_name].inverse_transform(z).reshape(-1))
+        else:
+            return torch.tensor(self.scalers[feat_name].inverse_transform(z))
 
 def from_graphs_to_pandas(graphs):
     x = []

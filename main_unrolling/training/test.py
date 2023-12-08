@@ -8,7 +8,7 @@ import numpy as np
 from .loss import *
 
 
-def testing_plain(model, loader, alpha=0, normalization=None):
+def testing_plain(model, loader):
     '''
     Function that tests a model and returns either the average losses or the predicted and real pressure values
     It can work both for ANN and GNN models (which require different DataLoaders)
@@ -61,7 +61,6 @@ def testing_plain(model, loader, alpha=0, normalization=None):
                 else:
                     out = model.to(device).float()(x)
                 pred.append(out.detach().cpu().numpy())
-
 
         preds = np.concatenate(pred).reshape(-1, 1)
         reals = np.concatenate(real).reshape(-1, 1)

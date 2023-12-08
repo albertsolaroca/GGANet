@@ -1,11 +1,14 @@
 # Imports
-
+import numpy as np
+import torch
 import wntr
 import sys
 import time
 
 from wntr.network import Pattern
-from get_set import *
+from pump_scheduling.get_set import *
+from main_unrolling.tune_train import prepare_training
+import pump_scheduling.metamodel as metamodel
 
 
 # Changes the pump schedule values (as multipliers from 0 to 1) for a given pump
@@ -114,3 +117,27 @@ def run_WNTR_model(file, new_pattern_values, electricity_values):
     output = {'wn': wn, 'result': result, 'critical_nodes': critical_nodes}
 
     return output
+
+def run_metamodel(network_name, new_pattern_values, electricity_values):
+
+    # wn = make_network(file)
+
+    tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(
+        network_name, 1)
+
+    one_sample = tra_dataset_MLP[0][0].unsqueeze(0)
+
+    mm = metamodel.MyMetamodel()
+    prediction = mm.predict(one_sample)
+    output_norm = prediction.squeeze()
+    # output_norm = prediction.reshape(-1, len(prediction[0][0]))
+
+    output = gn.inverse_transform_array(output_norm, 'pressure', reshape=False)
+
+    # result = simulate_network(wn)
+    #
+    # critical_nodes = get_junction_nodes(wn)
+    #
+    # output = {'wn': wn, 'result': result, 'critical_nodes': critical_nodes}
+
+    return None
