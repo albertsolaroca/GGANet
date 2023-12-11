@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['EPANET Net 3']
+network: ['KYPIPE Example 8 fix']
 
 
 # number of training samples to use (if < than total)
@@ -49,9 +49,9 @@ hyperParams:
 #                - 4
         UnrollingModel:
             num_layers:
-#                - 1
+                - 1
 #                - 2
-                - 3
+#                - 3
 #                - 4
 adamParams:
     lr: 0.01
@@ -59,8 +59,8 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 100
-    batch_size: 128
+    num_epochs: 10
+    batch_size: 2
 
 
 #lossParams:

@@ -108,9 +108,10 @@ def prepare_training(network, samples):
         tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
         node_size, edge_size = tra_dataset[0].x.size(-1), tra_dataset[0].edge_attr.size(-1)
         # number of nodes
-        junctions = (tra_database[0].node_type == 0).numpy().sum()
-        tanks = (tra_database[0].node_type == 2).numpy().sum()
-        output_nodes = junctions + tanks  # remove reservoirs
+        junctions = (tra_database[0].node_type == JUNCTION_TYPE).numpy().sum()
+        tanks = (tra_database[0].node_type == TANK_TYPE).numpy().sum()
+
+        output_nodes = len(tra_dataset[0].y[0])  # remove reservoirs
         # dataloader
         # transform dataset for MLP
         # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
@@ -189,7 +190,8 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     loss_plot = plot_loss(tra_losses, val_losses, f'{results_folder}/{wdn}/{algorithm}/loss')
     R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
-    wandb.unwatch(model)
+    if agent:
+        wandb.unwatch(model)
     # store training history and model
     pd.DataFrame(data=np.array([tra_losses, val_losses]).T).to_csv(
         f'{results_folder}/{wdn}/{algorithm}/hist.csv')
@@ -267,7 +269,7 @@ def load_config(config_file):
 
 # Main method
 if __name__ == "__main__":
-    agent = True
+    agent = False
     if not agent:
         default_config = default_configuration()
         tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(default_config.network, default_config.samples)

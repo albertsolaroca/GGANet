@@ -40,7 +40,7 @@ def calculate_metrics(real, dummy, pred):
 
     nse_dummy_scores = []
     nse_model_scores = []
-    for i in range(36):
+    for i in range(len(real[0])):
         dummy_score = nse(real[:, i], dummy[:, i])
         model_score = nse(real[:, i], pred[:, i])
         nse_dummy_scores.append(dummy_score)

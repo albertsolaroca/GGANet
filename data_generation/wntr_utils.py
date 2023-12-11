@@ -485,17 +485,16 @@ def plot_dataset_attribute_distribution(dataset, attribute, figsize=(20, 5), bin
     return df_attr
 
 
-def from_wntr_to_nx(wn, continuous):
+def from_wntr_to_nx(wn, continuous, flows):
     '''
 	This function converts a WNTR object to networkx
 	'''
     wn_links = list(wn.links())
     wn_nodes = list(wn.nodes())
-
     G_WDS = wn.get_graph()  # directed multigraph
     uG_WDS = G_WDS.to_undirected()  # undirected
     sG_WDS = nx.Graph(uG_WDS)  # Simple graph
-
+    count = 0
     for (u, v, wt) in sG_WDS.edges.data():
         for edge in wn.links():
             if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (
@@ -503,6 +502,7 @@ def from_wntr_to_nx(wn, continuous):
 
                 if sG_WDS[u][v]['type'] == 'Pipe':
                     sG_WDS[u][v]['name'] = edge[1].name
+                    sG_WDS[u][v]['flowrate'] = torch.tensor(flows[edge[1].name].values)
                     sG_WDS[u][v]['diameter'] = edge[1].diameter
                     # sG_WDS[u][v]['length'] = edge[1].length
                     # sG_WDS[u][v]['roughness'] = edge[1].roughness
@@ -513,6 +513,7 @@ def from_wntr_to_nx(wn, continuous):
 
                 elif sG_WDS[u][v]['type'] == 'Pump':
                     sG_WDS[u][v]['name'] = edge[1].name
+                    sG_WDS[u][v]['flowrate'] = torch.tensor(flows[edge[1].name].values)
                     sG_WDS[u][v]['diameter'] = 0
                     # sG_WDS[u][v]['length'] = 0
                     # sG_WDS[u][v]['roughness'] = 0
@@ -620,19 +621,25 @@ def convert_to_pyg(dataset, continuous):
         wn = sample['network']
         flows = sample['flowrate']
         # create PyG Data
-        pyg_data = convert.from_networkx(from_wntr_to_nx(wn, continuous))
+        first_part = from_wntr_to_nx(wn, continuous, flows)
+        pyg_data = convert.from_networkx(first_part)
 
         # Add network name
         pyg_data.name = sample['network_name']
         # Add diameters for MLP
-        pyg_data.diameters = torch.tensor(sample['diameter']).float()
+        # pyg_data.diameters = torch.tensor(sample['diameter']).float()
         # Add simulation results
         if continuous:
             press_shape = sample['pressure'].shape
             press_reshaped = sample['pressure'].values.reshape(press_shape[0], press_shape[1])
             pyg_data.pressure = torch.tensor(press_reshaped)
+
+            flow_shape = sample['flowrate'].shape
+            flow_reshaped = sample['flowrate'].values.reshape(flow_shape[0], flow_shape[1])
+            pyg_data.flowrates = torch.tensor(flow_reshaped)
         else:
             pyg_data.pressure = torch.tensor(sample['pressure'])
+            pyg_data.flowrates = torch.tensor(sample['flowrate'])
 
         # convert to float where needed
         pyg_data.diameter = pyg_data.diameter.float()

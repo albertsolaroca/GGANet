@@ -287,10 +287,10 @@ class UnrollingModel(nn.Module):
         # To calculate amount of pumps we assume that the time period is 24
         self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
 
-        self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
-        self.hids_q = Linear(self.demand_nodes, self.num_flows)  # 4.6/4.10
+        self.hidq0_h = Linear(self.num_flows + self.pump_number, self.num_heads)  # 4.14
+        self.hids_q = Linear(self.demand_nodes, self.num_flows + self.pump_number)  # 4.6/4.10
         self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  # 4.7/4.11
-        self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  # 4.8/4.12
+        self.hidh0_q = Linear(self.num_base_heads, self.num_flows + self.pump_number)  # 4.8/4.12
         self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows),
                                 nn.ReLU())  # 4.9/4.13
 
@@ -305,9 +305,9 @@ class UnrollingModel(nn.Module):
             self.hid_fh.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
             self.resq.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
             self.hidD_q.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_flows)))
-            self.hidD_h.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
+            self.hidD_h.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_heads), nn.ReLU()))
 
-        self.out = Linear(self.num_flows, num_outputs)
+        self.out = Linear(self.num_flows + self.pump_number, num_outputs - self.pump_number)
 
     def forward(self, x, num_steps=1):
 
@@ -322,7 +322,10 @@ class UnrollingModel(nn.Module):
         res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(
             edge_features)
 
-        q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow
+        q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow for the pipes
+        pump_flows = q[0, 0:self.pump_number]
+        # This is the educated "guess" of the flow for the pumps
+        q = torch.cat((q[0], pump_flows), dim=0).reshape(1,-1)
         res_q_h = self.hidq0_h(q)  # 4.14
 
         predictions = []
@@ -349,7 +352,9 @@ class UnrollingModel(nn.Module):
                 res_q_h = self.resq[i](q)
 
             # Append the prediction for the current time step
-            prediction = self.out(q)
+            pred_heads = self.out(q)
+            pred_pump_flows = q[:, -self.pump_number:]
+            prediction = torch.cat((pred_heads, pred_pump_flows), dim=1)
             predictions.append(prediction)
 
         if num_steps == 1:
