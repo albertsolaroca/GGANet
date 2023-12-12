@@ -316,7 +316,7 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
         # Don't change the base_value of the nodes
-        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(0.1, 1.5, 0.1))
+        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(0.1, 1, 0.1))
         # base_val = node.demand_timeseries_list[0].base_value
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if continuous:

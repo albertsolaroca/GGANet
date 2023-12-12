@@ -23,7 +23,7 @@ algorithms:
 #    - MLPDynamicOnly
 #    - MLPStatic
 #    - BaselineUnrolling
-    - UnrollingModel
+    - UnrollingModelQ
 
 
 # hyper params for each model
@@ -47,12 +47,12 @@ hyperParams:
                 - 2
 #                - 3
 #                - 4
-        UnrollingModel:
+        UnrollingModelQ:
             num_layers:
 #                - 1
-                - 2
+#                - 2
 #                - 3
-#                - 4
+                - 4
 adamParams:
     lr: 0.01
     weight_decay: 0.001

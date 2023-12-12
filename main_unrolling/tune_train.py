@@ -97,9 +97,14 @@ def prepare_training(network, samples):
                 print('Removed PES anomaly')
                 print('Check', tra_database[4468].pressure.mean())
 
+        tra_dataset, A12_bar = create_dataset(tra_database)
+
+        junctions = (tra_database[0].node_type == JUNCTION_TYPE).numpy().sum()
+        tanks = (tra_database[0].node_type == TANK_TYPE).numpy().sum()
+        output_nodes = len(tra_dataset[0].y[0])  # remove reservoirs
+
         # get GRAPH datasets
         # later on we should change this and use normal scalers from scikit
-        tra_dataset, A12_bar = create_dataset(tra_database)
         gn = GraphNormalizer()
         gn = gn.fit(tra_dataset)
 
@@ -108,10 +113,7 @@ def prepare_training(network, samples):
         tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
         node_size, edge_size = tra_dataset[0].x.size(-1), tra_dataset[0].edge_attr.size(-1)
         # number of nodes
-        junctions = (tra_database[0].node_type == JUNCTION_TYPE).numpy().sum()
-        tanks = (tra_database[0].node_type == TANK_TYPE).numpy().sum()
 
-        output_nodes = len(tra_dataset[0].y[0])  # remove reservoirs
         # dataloader
         # transform dataset for MLP
         # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
