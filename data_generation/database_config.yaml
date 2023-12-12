@@ -4,6 +4,6 @@
 dataset_names : ['FOS_pump_sched_flow'],
 
 # number of trials
-n_trials : [100],
+n_trials : [1000],
 
 }
