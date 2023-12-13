@@ -7,15 +7,20 @@ from torch.nn import Linear, Sequential
 
 
 class Dummy():
-    def __init__(self):
+    def __init__(self, pressures_idx):
+        self.pressures_idx = pressures_idx
         pass
 
     def evaluate(self, Y):
-        mean_per_row = torch.mean(Y, dim=1)
+        press_mean_per_row = torch.mean(Y[:, :self.pressures_idx], dim=1)
         # repeat mean to match dimensions of Y
-        mean = mean_per_row.unsqueeze(1).repeat(1, Y.shape[1])
+        press_mean = press_mean_per_row.unsqueeze(1).repeat(1, self.pressures_idx)
+        flow_mean_per_row = torch.mean(Y[:, self.pressures_idx:], dim=1)
+        flow_mean_per_row[:] = torch.mean(flow_mean_per_row, dim=0)
+        # repeat mean to match dimensions of Y
+        flow_mean = flow_mean_per_row.unsqueeze(1).repeat(1, Y.shape[1] - self.pressures_idx)
 
-        return mean
+        return torch.cat((press_mean, flow_mean), dim=1)
 
 
 class MLPDynamicOnly(nn.Module):
@@ -408,9 +413,10 @@ class UnrollingModelQ(nn.Module):
         res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(
             edge_features)
 
-        q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow for the pipes
-        pump_flows = torch.mul(coeff_n * coeff_r, torch.pow(q[:, 0:self.pump_number], coeff_n - 1))
+        # This is the educated "guess" of the flow for the pipes
+        q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()
         # This is the educated "guess" of the flow for the pumps
+        pump_flows = torch.mul(coeff_n * coeff_r, torch.pow(q[:, 0:self.pump_number], coeff_n - 1))
 
         q = torch.cat((q, pump_flows), dim=1)
 
@@ -430,8 +436,6 @@ class UnrollingModelQ(nn.Module):
             q_ps = q.clone()
             q_ps[:, -self.pump_number:] = pump_settings
             # q_ps[:, -self.pump_number:] = torch.mul(pump_settings,  q[:, -self.pump_number:])
-            the_flows = q_ps[0:10, -self.pump_number:]
-            the_settings = pump_settings[0:10]
 
             res_s_q = self.hids_q(s)
 

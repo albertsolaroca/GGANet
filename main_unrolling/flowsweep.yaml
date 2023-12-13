@@ -13,7 +13,7 @@ parameters:
   network:
     values: ['FOS_pump_sched_flow_2']
   samples:
-    values: [10000]
+    values: [5]
   patience:
     values: [10, 20]
   divisor:
@@ -21,7 +21,7 @@ parameters:
   epoch_frequency:
     values: [10, 50, 100]
   batch_size:
-    values: [256, 512, 1024]
+    values: [128, 256, 512]
   learning_rate:
     values: [0.01, 0.001]
   weight_decay:
@@ -29,8 +29,8 @@ parameters:
   hid_channels:
     values: [32, 64, 128]
   num_layers:
-    values: [1, 2, 4]
+    values: [2, 3, 4]
   algorithm:
-    values: ['MLPStatic', 'MLPDynamicOnly', 'BaselineUnrolling', 'UnrollingModel']
+    values: ['UnrollingModel', 'UnrollingModelQ']
   num_epochs:
     values: [2000]

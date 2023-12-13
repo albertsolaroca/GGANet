@@ -316,7 +316,7 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
         # Don't change the base_value of the nodes
-        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(0.1, 1, 0.1))
+        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(0.1, 1.5, 0.1))
         # base_val = node.demand_timeseries_list[0].base_value
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if continuous:
@@ -408,7 +408,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
             raise
 
     res_dict['pressure'] = sim.node['pressure'].squeeze()
-    res_dict['flowrate'] = sim.link['flowrate'].squeeze()
+    res_dict['flowrate'] = sim.link['flowrate'].squeeze() * 1000
     # check simulation
     ix = res_dict['node_type'][res_dict['node_type'] == 'Junction'].index.to_list()
 
@@ -418,7 +418,7 @@ def get_dataset_entry(network, path, continuous=False, randomized_demands=None):
     return res_dict, sim, sim_check, time
 
 
-def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None, count=2):
+def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, randomized_demands=None, count=0):
     """
     This function creates a dataset of n_trials length for a specific network
     """

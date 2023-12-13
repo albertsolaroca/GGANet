@@ -109,7 +109,6 @@ def create_dataset(database, normalizer=None, output='pressure'):
                 pump_flows = selected_flows[:, time_step].reshape(-1, 1)
                 output = torch.cat((nodal_pressures, pump_flows), dim=0)
                 graph.y.append(output)
-                # graph.y.append(pump_flows)
 
         else:
             # Graph output (head)

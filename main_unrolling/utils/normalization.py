@@ -47,12 +47,13 @@ class PowerLogTransformer(BaseEstimator, TransformerMixin):
 
 
 class GraphNormalizer:
-    def __init__(self, x_feat_names=['head', 'diameter', 'type', 'demand_timeseries'],
+    def __init__(self, output_index=None, x_feat_names=['head', 'diameter', 'type', 'demand_timeseries'],
                  ea_feat_names=['diameter'], output='pressure'):
         # store
         self.x_feat_names = x_feat_names
         self.ea_feat_names = ea_feat_names
         self.output = output
+        self.output_index = output_index
 
         # create separate scaler for each feature (can be improved, e.g., you can fit a scaler for multiple columns)
         self.scalers = {}
@@ -61,12 +62,21 @@ class GraphNormalizer:
                 self.scalers[feat] = PowerLogTransformer(log_transform=True, reverse=False)
             else:
                 self.scalers[feat] = MinMaxScaler()
-        self.scalers[output] = PowerLogTransformer(log_transform=True, reverse=True)
+
         for feat in self.ea_feat_names:
             if feat == 'length':
                 self.scalers[feat] = PowerLogTransformer(log_transform=True, reverse=False)
             else:
                 self.scalers[feat] = MinMaxScaler()
+
+        if isinstance(self.output, list):
+            for element in self.output:
+                if element == 'pressure':
+                    self.scalers[element] = PowerLogTransformer(log_transform=True, reverse=True)
+                else:
+                    self.scalers[element] = MinMaxScaler()
+        else:
+            self.scalers[output] = PowerLogTransformer(log_transform=True, reverse=True)
 
     def fit(self, graphs):
         ''' Fit the scalers on an array of x and ea features
@@ -76,10 +86,17 @@ class GraphNormalizer:
         for ix, feat in enumerate(self.x_feat_names):
             self.scalers[feat] = self.scalers[feat].fit(x[:, ix].reshape(-1, 1))
 
-        self.scalers[self.output] = self.scalers[self.output].fit(y.reshape(-1, 1))
-
         for ix, feat in enumerate(self.ea_feat_names):
             self.scalers[feat] = self.scalers[feat].fit(ea[:, ix].reshape(-1, 1))
+
+        if isinstance(self.output, list):
+            for element in self.output:
+                if element == 'pressure':
+                    self.scalers[element] = self.scalers[element].fit(y[:, :self.output_index].reshape(-1, 1))
+                else:
+                    self.scalers[element] = self.scalers[element].fit(y[:, self.output_index:].reshape(-1, 1))
+        else:
+            self.scalers[self.output] = self.scalers[self.output].fit(y.reshape(-1, 1))
 
         return self
 
@@ -98,25 +115,34 @@ class GraphNormalizer:
         if isinstance(graph.y, list):
             transformed_y = []
             for i, el in enumerate(graph.y):
-                transformed_y.append(
-                    torch.tensor(self.scalers[self.output].transform(graph.y[i].numpy().reshape(-1, 1)).reshape(-1)))
+                if isinstance(self.output, list):
+                    for element in self.output:
+                        if element == 'pressure':
+                            pressure = torch.tensor(self.scalers[element].transform(graph.y[i][:self.output_index].numpy().reshape(-1, 1)).reshape(-1))
+                        else:
+                            pump_flow = torch.tensor(self.scalers[element].transform(graph.y[i][self.output_index:].numpy().reshape(-1, 1)).reshape(-1))
+                    mediate = torch.cat((pressure, pump_flow), dim=0)
+                    transformed_y.append(torch.cat((pressure, pump_flow), dim=0))
+                else:
+                    transformed_y.append(
+                        torch.tensor(self.scalers[self.output].transform(graph.y[i].numpy().reshape(-1, 1)).reshape(-1)))
             graph.y = transformed_y
         else:
             graph.y = torch.tensor(self.scalers[self.output].transform(graph.y.numpy().reshape(-1, 1)).reshape(-1))
         return graph
 
-    def inverse_transform(self, graph):
-        ''' Perform inverse transformation to return original features
-        '''
-        graph = graph.clone()
-        for ix, feat in enumerate(self.x_feat_names):
-            temp = graph.x[:, ix].numpy().reshape(-1, 1)
-            graph.x[:, ix] = torch.tensor(self.scalers[feat].inverse_transform(temp).reshape(-1))
-        for ix, feat in enumerate(self.ea_feat_names):
-            temp = graph.edge_attr[:, ix].numpy().reshape(-1, 1)
-            graph.edge_attr[:, ix] = torch.tensor(self.scalers[feat].inverse_transform(temp).reshape(-1))
-        graph.y = torch.tensor(self.scalers[self.output].inverse_transform(graph.y.numpy().reshape(-1, 1)).reshape(-1))
-        return graph
+    # def inverse_transform(self, graph):
+    #     ''' Perform inverse transformation to return original features
+    #     '''
+    #     graph = graph.clone()
+    #     for ix, feat in enumerate(self.x_feat_names):
+    #         temp = graph.x[:, ix].numpy().reshape(-1, 1)
+    #         graph.x[:, ix] = torch.tensor(self.scalers[feat].inverse_transform(temp).reshape(-1))
+    #     for ix, feat in enumerate(self.ea_feat_names):
+    #         temp = graph.edge_attr[:, ix].numpy().reshape(-1, 1)
+    #         graph.edge_attr[:, ix] = torch.tensor(self.scalers[feat].inverse_transform(temp).reshape(-1))
+    #     graph.y = torch.tensor(self.scalers[self.output].inverse_transform(graph.y.numpy().reshape(-1, 1)).reshape(-1))
+    #     return graph
 
     def transform_array(self, z, feat_name):
         '''
@@ -142,7 +168,7 @@ def from_graphs_to_pandas(graphs):
 
         if isinstance(graph.y, list):
 
-            y.append(np.concatenate(graph.y, axis=0))
+            y.append(np.stack(graph.y, axis=0))
         else:
             y.append(graph.y.numpy())
 

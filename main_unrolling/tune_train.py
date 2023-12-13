@@ -105,7 +105,7 @@ def prepare_training(network, samples):
 
         # get GRAPH datasets
         # later on we should change this and use normal scalers from scikit
-        gn = GraphNormalizer()
+        gn = GraphNormalizer(junctions + tanks, output=['pressure', 'pump_flow'])
         gn = gn.fit(tra_dataset)
 
         tra_dataset, _ = create_dataset(tra_database, normalizer=gn)
