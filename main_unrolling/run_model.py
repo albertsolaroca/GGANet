@@ -67,12 +67,12 @@ if __name__ == "__main__":
     data_folder = '../data_generation/datasets'
     default_config = default_configuration()
 
-    tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(
+    tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepare_training(
         default_config.network, default_config.samples)
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
-    model_path = 'experiments/unrolling_WDN0116/FOS_pump_sched_10k/UnrollingModel/model.pickle'
+    model_path = 'experiments/unrolling_WDN0120/FOS_pump_sched_flow/UnrollingModel/model.pickle'
     with open(model_path, 'rb') as handle:
         model = torch.load(handle)
         model.eval()
@@ -104,11 +104,11 @@ if __name__ == "__main__":
     real = gn.inverse_transform_array(real, 'pressure')
     pred = pred.reshape(-1, output_nodes)
     real = real.reshape(-1, output_nodes)
-    dummy = Dummy().evaluate(real)
+    dummy = Dummy(junctions + tanks).evaluate(real)
     # Array below is created to ensure proper indexing of the nodes when displaying
     type_array = (tst_database[0].node_type == 0) | (tst_database[0].node_type == 2)
 
-    for i in [0, 1, 7, 26, 36]:
+    for i in [0, 1, 6, 26, 36]:
         plt.plot(real[0:100, i], label="Real")
         plt.plot(pred[0:100, i], label="Predicted")
         plt.plot(dummy[0:100, i], label="Dummy")
@@ -116,10 +116,21 @@ if __name__ == "__main__":
         plt.xlabel('Timestep')
 
         plt.legend()
-        names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Next to Tank', 26: 'Random Node', 36: 'Tank'}
+        names = {0: 'Next to Reservoir', 1: 'Random Node', 6: 'Next to Tank', 26: 'Random Node', 36: 'Tank', 37: 'Pump'}
         plt.title(names[i])
         # save_response_graphs_in_ML_tracker(real, pred, names[i], i)
         plt.show()
         plt.close()
+
+    plt.plot(real[0:100, 37], label="Real")
+    plt.plot(pred[0:100, 37], label="Predicted")
+    plt.plot(dummy[0:100, 37], label="Dummy")
+    plt.ylabel('LPS')
+    plt.xlabel('Timestep')
+
+    plt.legend()
+    plt.title(names[37])
+    plt.show()
+    plt.close()
 
     metrics(real, pred, dummy)

@@ -79,7 +79,7 @@ def prepare_training(network, samples):
     if os.path.exists(wdn + '_prep_data.pkl'):
         with open(wdn + '_prep_data.pkl', 'rb') as file:
             prepared_data = pickle.load(file)
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepared_data
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepared_data
 
     else:
         # create folder for result
@@ -122,16 +122,16 @@ def prepare_training(network, samples):
         val_dataset_MLP = create_dataset_MLP_from_graphs(val_dataset)[0]
         tst_dataset_MLP = create_dataset_MLP_from_graphs(tst_dataset)[0]
 
-        prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes)
+        prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, tanks, junctions, output_nodes)
 
         # Save the prepared data to a file
         # with open(wdn + '_prep_data.pkl', 'wb') as file:
         #     pickle.dump(prepared_data, file)
 
-    return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes
+    return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes
 
 
-def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, agent):
+def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, agent):
     # configuration = wandb.config
     tra_loader = torch.utils.data.DataLoader(tra_dataset_MLP,
                                              batch_size=configuration.batch_size, shuffle=True, pin_memory=True)
@@ -239,7 +239,7 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     real = real.reshape(-1, output_nodes)
 
 
-    dummy = Dummy().evaluate(real)
+    dummy = Dummy(junctions + tanks).evaluate(real)
     dict_metrics, dummy_scores, model_scores = calculate_metrics(real, dummy, pred)
     print(dict_metrics)
     # Logging plots on WandB
@@ -274,13 +274,13 @@ if __name__ == "__main__":
     agent = False
     if not agent:
         default_config = default_configuration()
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(default_config.network, default_config.samples)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepare_training(default_config.network, default_config.samples)
         train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, agent)
     else:
         # initialize random generators for numpy and pytorch
         np.random.seed(4320)
         torch.manual_seed(3407)
         wandb.init()
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(wandb.config.network, wandb.config.samples)
-        train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, agent)
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepare_training(wandb.config.network, wandb.config.samples)
+        train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, agent)
         wandb.finish()

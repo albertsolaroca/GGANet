@@ -54,7 +54,7 @@ def load_water_network(inp_file):
 	'''
     return wntr.network.WaterNetworkModel(inp_file)
 
-def generate_binary_string(length=24, zero_probability=0.2):
+def generate_binary_string(length=24, zero_probability=0.15):
     binary_schedule = []
     for _ in range(length):
         if np.random.random() < zero_probability:
@@ -427,9 +427,11 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
     times = []
     for i in tqdm(range(n_trials), network):
         flag = False
+        if i != 0 and i % 1000 == 0:
+            randomized_demands = demand_generation.generate_demand_patterns()
+
         while not flag:
-            if i != 0 and i % 1000 == 0:
-                randomized_demands = demand_generation.generate_demand_patterns()
+
             res_dict, _, flag, time = get_dataset_entry(network, path, continuous, randomized_demands=randomized_demands)
             # Append time to measure how long it takes to generate the dataset
             times.append(time)
