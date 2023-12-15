@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_sched_flow_2']
+network: ['FOS_pump_sched_flow_single']
 
 
 # number of training samples to use (if < than total)
@@ -22,8 +22,8 @@ algorithms:
 #    - Dummy
 #    - MLPDynamicOnly
 #    - MLPStatic
-    - BaselineUnrolling
-#    - UnrollingModel
+#    - BaselineUnrolling
+    - UnrollingModel
 
 
 # hyper params for each model
@@ -50,16 +50,16 @@ hyperParams:
         UnrollingModel:
             num_layers:
 #                - 1
-#                - 2
+                - 2
 #                - 3
-                - 4
+#                - 4
 adamParams:
     lr: 0.01
     weight_decay: 0.001
 
 
 trainParams:
-    num_epochs: 200
+    num_epochs: 2
     batch_size: 128
 
 

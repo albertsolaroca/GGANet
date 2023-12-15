@@ -47,13 +47,13 @@ class PowerLogTransformer(BaseEstimator, TransformerMixin):
 
 
 class GraphNormalizer:
-    def __init__(self, output_index=None, x_feat_names=['head', 'diameter', 'type', 'demand_timeseries'],
+    def __init__(self, junct_and_tanks=None, x_feat_names=['head', 'diameter', 'type', 'demand_timeseries'],
                  ea_feat_names=['diameter'], output='pressure'):
         # store
         self.x_feat_names = x_feat_names
         self.ea_feat_names = ea_feat_names
         self.output = output
-        self.output_index = output_index
+        self.junct_and_tanks = junct_and_tanks
 
         # create separate scaler for each feature (can be improved, e.g., you can fit a scaler for multiple columns)
         self.scalers = {}
@@ -92,9 +92,9 @@ class GraphNormalizer:
         if isinstance(self.output, list):
             for element in self.output:
                 if element == 'pressure':
-                    self.scalers[element] = self.scalers[element].fit(y[:, :self.output_index].reshape(-1, 1))
+                    self.scalers[element] = self.scalers[element].fit(y[:, :self.junct_and_tanks].reshape(-1, 1))
                 else:
-                    self.scalers[element] = self.scalers[element].fit(y[:, self.output_index:].reshape(-1, 1))
+                    self.scalers[element] = self.scalers[element].fit(y[:, self.junct_and_tanks:].reshape(-1, 1))
         else:
             self.scalers[self.output] = self.scalers[self.output].fit(y.reshape(-1, 1))
 
@@ -118,9 +118,9 @@ class GraphNormalizer:
                 if isinstance(self.output, list):
                     for element in self.output:
                         if element == 'pressure':
-                            pressure = torch.tensor(self.scalers[element].transform(graph.y[i][:self.output_index].numpy().reshape(-1, 1)).reshape(-1))
+                            pressure = torch.tensor(self.scalers[element].transform(graph.y[i][:self.junct_and_tanks].numpy().reshape(-1, 1)).reshape(-1))
                         else:
-                            pump_flow = torch.tensor(self.scalers[element].transform(graph.y[i][self.output_index:].numpy().reshape(-1, 1)).reshape(-1))
+                            pump_flow = torch.tensor(self.scalers[element].transform(graph.y[i][self.junct_and_tanks:].numpy().reshape(-1, 1)).reshape(-1))
                     mediate = torch.cat((pressure, pump_flow), dim=0)
                     transformed_y.append(torch.cat((pressure, pump_flow), dim=0))
                 else:
@@ -154,11 +154,25 @@ class GraphNormalizer:
         '''
             This is for MLP dataset; it can be done better (the entire thing, from raw data to datasets)
         '''
+
         if reshape:
             return torch.tensor(self.scalers[feat_name].inverse_transform(z).reshape(-1))
         else:
             return torch.tensor(self.scalers[feat_name].inverse_transform(z))
 
+    def denormalize_multiple(self, array, output_nodes):
+
+        # reshape to select correct ones and then reshape before transform
+        array_reshaped = array.reshape(-1, output_nodes)
+        array_only_pressures = array_reshaped[:, :self.junct_and_tanks].reshape(-1, 1)
+        array_only_flows = array_reshaped[:, self.junct_and_tanks:].reshape(-1, 1)
+        array_pressures = self.inverse_transform_array(array_only_pressures, 'pressure')
+        array_flow = self.inverse_transform_array(array_only_flows, 'pump_flow')
+
+        pred = torch.cat((array_pressures.reshape(-1, (self.junct_and_tanks)),
+                          array_flow.reshape(-1, output_nodes - (self.junct_and_tanks))), axis=1)
+
+        return pred
 def from_graphs_to_pandas(graphs):
     x = []
     y = []

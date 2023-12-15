@@ -501,9 +501,8 @@ def from_wntr_to_nx(wn, continuous, flows):
         for edge in wn.links():
             if (edge[1].start_node.name == u and edge[1].end_node.name == v) or (
                     edge[1].start_node.name == v and edge[1].end_node.name == u):
-
                 if sG_WDS[u][v]['type'] == 'Pipe':
-                    sG_WDS[u][v]['name'] = edge[1].name
+                    sG_WDS[u][v]['edge_ID'] = edge[1].name
                     sG_WDS[u][v]['flowrate'] = torch.tensor(flows[edge[1].name].values)
                     sG_WDS[u][v]['diameter'] = edge[1].diameter
                     # sG_WDS[u][v]['length'] = edge[1].length
@@ -514,7 +513,7 @@ def from_wntr_to_nx(wn, continuous, flows):
                     sG_WDS[u][v]['schedule'] = torch.tensor(np.array([0] * 24))
 
                 elif sG_WDS[u][v]['type'] == 'Pump':
-                    sG_WDS[u][v]['name'] = edge[1].name
+                    sG_WDS[u][v]['edge_ID'] = edge[1].name
                     sG_WDS[u][v]['flowrate'] = torch.tensor(flows[edge[1].name].values)
                     sG_WDS[u][v]['diameter'] = 0
                     # sG_WDS[u][v]['length'] = 0

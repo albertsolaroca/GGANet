@@ -67,7 +67,7 @@ if __name__ == "__main__":
     data_folder = '../data_generation/datasets'
     default_config = default_configuration()
 
-    tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepare_training(
+    datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(
         default_config.network, default_config.samples)
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         model = torch.load(handle)
         model.eval()
 
-    tst_loader = torch.utils.data.DataLoader(tst_dataset_MLP,
+    tst_loader = torch.utils.data.DataLoader(datasets_MLP[2],
                                              batch_size=default_config.batch_size, shuffle=False, pin_memory=True)
 
     # input = tra_dataset_MLP[0][0].unsqueeze(0).to(device)
@@ -100,10 +100,8 @@ if __name__ == "__main__":
 
     pred, real, elapsed_time = testing_plain(model, tst_loader)
     print("TIME TAKEN: ", elapsed_time)
-    pred = gn.inverse_transform_array(pred, 'pressure')
-    real = gn.inverse_transform_array(real, 'pressure')
-    pred = pred.reshape(-1, output_nodes)
-    real = real.reshape(-1, output_nodes)
+    pred = gn.denormalize_multiple(pred, output_nodes)
+    real = gn.denormalize_multiple(real, output_nodes)
     dummy = Dummy(junctions + tanks).evaluate(real)
     # Array below is created to ensure proper indexing of the nodes when displaying
     type_array = (tst_database[0].node_type == 0) | (tst_database[0].node_type == 2)

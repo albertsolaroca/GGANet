@@ -71,6 +71,12 @@ def make_config_dict(configuration):
 
     return config
 
+def load_config(config_file):
+    with open(config_file, "r") as file:
+        config = yaml.safe_load(file)
+    return config
+
+
 
 def prepare_training(network, samples):
     wdn = network
@@ -79,7 +85,7 @@ def prepare_training(network, samples):
     if os.path.exists(wdn + '_prep_data.pkl'):
         with open(wdn + '_prep_data.pkl', 'rb') as file:
             prepared_data = pickle.load(file)
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepared_data
+        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, names = prepared_data
 
     else:
         # create folder for result
@@ -121,23 +127,35 @@ def prepare_training(network, samples):
         tra_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tra_dataset)
         val_dataset_MLP = create_dataset_MLP_from_graphs(val_dataset)[0]
         tst_dataset_MLP = create_dataset_MLP_from_graphs(tst_dataset)[0]
+        datasets_MLP = [tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP]
 
-        prepared_data = (tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, tanks, junctions, output_nodes)
+        node_names = tra_database[0].node_stores[0]["ID"]
+        edge_names = tra_database[0].edge_stores[0]["edge_ID"]
+        node_types = tra_database[0].node_stores[0]["type"]
+        edge_types = tra_database[0].edge_stores[0]["edge_type"]
+
+        names = {}
+        names["node_ids"] = node_names
+        names["node_types"] = node_types
+        names["edge_ids"] = edge_names
+        names["edge_types"] = edge_types
+
+        prepared_data = (datasets_MLP, gn, indices, junctions, tanks, output_nodes, names)
 
         # Save the prepared data to a file
         # with open(wdn + '_prep_data.pkl', 'wb') as file:
         #     pickle.dump(prepared_data, file)
 
-    return tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes
+    return datasets_MLP, gn, indices, junctions, tanks, output_nodes, names
 
 
-def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, agent):
+def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nodes, agent):
     # configuration = wandb.config
-    tra_loader = torch.utils.data.DataLoader(tra_dataset_MLP,
+    tra_loader = torch.utils.data.DataLoader(datasets_MLP[0],
                                              batch_size=configuration.batch_size, shuffle=True, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset_MLP,
+    val_loader = torch.utils.data.DataLoader(datasets_MLP[1],
                                              batch_size=configuration.batch_size, shuffle=False, pin_memory=True)
-    tst_loader = torch.utils.data.DataLoader(tst_dataset_MLP,
+    tst_loader = torch.utils.data.DataLoader(datasets_MLP[2],
                                              batch_size=configuration.batch_size, shuffle=False, pin_memory=True)
     # create results dataframe
     results_df = pd.DataFrame()
@@ -233,11 +251,9 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
             json.dump(config, fp)
 
     _, _, _, pred, real, time = testing(model, val_loader)
-    pred = gn.inverse_transform_array(pred, 'pressure')
-    real = gn.inverse_transform_array(real, 'pressure')
-    pred = pred.reshape(-1, output_nodes)
-    real = real.reshape(-1, output_nodes)
 
+    pred = gn.denormalize_multiple(pred, output_nodes)
+    real = gn.denormalize_multiple(real, output_nodes)
 
     dummy = Dummy(junctions + tanks).evaluate(real)
     dict_metrics, dummy_scores, model_scores = calculate_metrics(real, dummy, pred)
@@ -263,10 +279,6 @@ def train(configuration, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, 
     # results_df.to_csv(f'{results_folder}/{wdn}/{algorithm}/results_{algorithm}.csv')
 
 
-def load_config(config_file):
-    with open(config_file, "r") as file:
-        config = yaml.safe_load(file)
-    return config
 
 
 # Main method
@@ -274,13 +286,13 @@ if __name__ == "__main__":
     agent = False
     if not agent:
         default_config = default_configuration()
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepare_training(default_config.network, default_config.samples)
-        train(default_config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes, agent)
+        datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(default_config.network, default_config.samples)
+        train(default_config, datasets_MLP, gn, indices, junctions, tanks, output_nodes, agent)
     else:
         # initialize random generators for numpy and pytorch
         np.random.seed(4320)
         torch.manual_seed(3407)
         wandb.init()
-        tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes = prepare_training(wandb.config.network, wandb.config.samples)
-        train(wandb.config, tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, agent)
+        datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(wandb.config.network, wandb.config.samples)
+        train(wandb.config, datasets_MLP, gn, indices, junctions, tanks, output_nodes, agent)
         wandb.finish()

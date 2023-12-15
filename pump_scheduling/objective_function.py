@@ -1,5 +1,6 @@
 # Imports
 import numpy as np
+import pandas as pd
 import torch
 import wntr
 import sys
@@ -30,8 +31,8 @@ def change_demand_pattern(wn, demand_pattern_id, new_pattern_values):
 # Returns the energy consumption of a given pump in kWh
 def energy_consumption(wn, pump_flowrate, head):
     # Energy consumption in kWh
-    energy = wntr.metrics.pump_energy(pump_flowrate, head, wn) # in J
-    energy = energy / 3600000 # in kWh
+    energy = wntr.metrics.pump_energy(pump_flowrate, head, wn)  # in J
+    energy = energy / 3600000  # in kWh
 
     return energy
 
@@ -43,12 +44,7 @@ def energy_cost(energy, wn):
 
 
 # Returns the total energy consumption and cost for a given pump
-def total_energy_and_cost(wn, result, pump_id_list, timestep=3600):
-
-    pump_flowrate = result.link['flowrate'].loc[:, wn.pump_name_list]
-    # Heads
-    head = result.node['head']
-
+def total_energy_and_cost(wn, pump_flowrate, head, pump_id_list, timestep=3600):
     energy = energy_consumption(wn, pump_flowrate, head)
     cost = energy_cost(energy, wn)
     total_energy_per_pump = []
@@ -74,33 +70,102 @@ def total_energy_and_cost(wn, result, pump_id_list, timestep=3600):
     return total_energy, total_cost
 
 
+
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
-def calculate_objective_function(wn, result, critical_nodes, pump_id_list):
-    calculation = total_energy_and_cost(wn, result, pump_id_list)
+def calculate_objective_function(wn, result):
+
+    pump_id_list = wn.pump_name_list
+    pump_flowrate = result.link['flowrate'].loc[:, wn.pump_name_list]
+    # Heads
+    head = result.node['head']
+
+    calculation = total_energy_and_cost(wn, pump_flowrate, head, pump_id_list)
     total_energy = calculation[0]
     total_cost = calculation[1]
 
     critical_node_pressures = []
-    for node in critical_nodes:
+    for node in get_junction_nodes(wn):
         pressure = min(get_pressure_at_node(result, node))
         critical_node_pressures.append(pressure)
 
     return total_energy, total_cost, critical_node_pressures
 
 
-def run_WNTR_model(file, new_pattern_values, electricity_values):
+# Calculates total energy consumption for an input of new pumping patterns list, \
+# and list of pump_ids, list of critical nodes and demand pattern id
+def calculate_objective_function_mm(network_file, result, node_idx, names, timestep=3600):
+    wn = make_network('../data_generation/networks/' + network_file + '.inp')
+    pump_id_list = wn.pump_name_list
+    node_ids = np.array(names['node_ids'], copy=False)
+    edge_ids = np.array(names['edge_ids'], copy=False)
+    edge_types = np.array(names['edge_types'], copy=False)
+    node_types = np.array(names['node_types'], copy=False)
+
+    jt_filter = np.where((node_types == 'Junction') | (node_types == 'Tank'))[0]
+    jt_ids = node_ids[jt_filter]
+
+    pump_filter = np.where(edge_types == 'Pump')[0]
+    pump_ids = set(edge_ids[pump_filter])
+
+
+    pump_flowrate_raw = result[:, node_idx:] / 1000
+    heads_raw = result[:, :node_idx]
+
+    # Heads
+    heads = pd.DataFrame(data=heads_raw, index=range(0, timestep * 24, timestep), columns=jt_ids)
+    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, index=range(0, timestep * 24, timestep), columns=pump_ids)
+
+    calculation = total_energy_and_cost(wn, pump_flowrates, heads, pump_id_list, timestep)
+    total_energy = calculation[0]
+    total_cost = calculation[1]
+
+    critical_node_pressures = []
+    for node in range(node_idx):
+        pressure = min(result[:, node])
+        critical_node_pressures.append(pressure)
+
+    return total_energy, total_cost, critical_node_pressures
+
+
+def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True):
     wn = make_network(file)
 
-
     # Minimum and required pressure for water network
-    wn.options.hydraulic.required_pressure = 14
+    wn.options.hydraulic.viscosity = 1.0
+    wn.options.hydraulic.specific_gravity = 1.0
+    wn.options.hydraulic.demand_multiplier = 1.0
+    wn.options.hydraulic.demand_model = 'DD'
     wn.options.hydraulic.minimum_pressure = 0
+    wn.options.hydraulic.required_pressure = 1
+    wn.options.hydraulic.pressure_exponent = 0.5
+    wn.options.hydraulic.headloss = 'H-W'
+    wn.options.hydraulic.trials = 50
+    wn.options.hydraulic.accuracy = 0.001
+    wn.options.hydraulic.unbalanced = 'CONTINUE'
+    wn.options.hydraulic.unbalanced_value = 10
+    wn.options.hydraulic.checkfreq = 2
+    wn.options.hydraulic.maxcheck = 10
+    wn.options.hydraulic.damplimit = 0.0
+    wn.options.hydraulic.headerror = 0.0
+    wn.options.hydraulic.flowchange = 0.0
+    wn.options.hydraulic.inpfile_units = "LPS"
+
+    if continuous:
+        wn.options.time.duration = 82800  # 24 * 3600
+        wn.options.time.hydraulic_timestep = 3600
+        wn.options.time.quality_timestep = 3600
+        wn.options.time.report_start = 0
+        wn.options.time.report_timestep = 3600
+        wn.options.time.pattern_start = 0
+        wn.options.time.pattern_timestep = 3600
+    else:
+        wn.options.time.duration = 0
 
     # Setting global energy prices since there is no pattern yet.
     # wn.options.energy.global_price = 3.61e-8
     wn.options.energy.global_pattern = electricity_values
-    #https://www.researchgate.net/publication/238041923_A_mixed_integer_linear_formulation_for_microgrid_economic_scheduling/figures
+    # https://www.researchgate.net/publication/238041923_A_mixed_integer_linear_formulation_for_microgrid_economic_scheduling/figures
 
     wn.add_pattern('EnergyPrice', electricity_values)
     wn.options.energy.global_pattern = 'EnergyPrice'
@@ -118,21 +183,20 @@ def run_WNTR_model(file, new_pattern_values, electricity_values):
 
     return output
 
-def run_metamodel(network_name, new_pattern_values, electricity_values):
 
+def run_metamodel(network_name, new_pump_pattern_values, electricity_values):
     # wn = make_network(file)
 
-    tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP, gn, indices, junctions, output_nodes = prepare_training(
+    datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(
         network_name, 1)
 
-    one_sample = tra_dataset_MLP[0][0].unsqueeze(0)
+    one_sample = datasets_MLP[0][0][0].unsqueeze(0)
 
     mm = metamodel.MyMetamodel()
     prediction = mm.predict(one_sample)
-    output_norm = prediction.squeeze()
-    # output_norm = prediction.reshape(-1, len(prediction[0][0]))
+    pred_formatted = prediction.squeeze().reshape(-1, 1)
 
-    output = gn.inverse_transform_array(output_norm, 'pressure', reshape=False)
+    pred = gn.denormalize_multiple(pred_formatted, output_nodes)
 
     # result = simulate_network(wn)
     #
@@ -140,4 +204,4 @@ def run_metamodel(network_name, new_pattern_values, electricity_values):
     #
     # output = {'wn': wn, 'result': result, 'critical_nodes': critical_nodes}
 
-    return None
+    return pred, junctions + tanks, output_nodes, names
