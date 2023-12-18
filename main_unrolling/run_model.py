@@ -49,7 +49,7 @@ def metrics(real, pred, dummy):
 
     dummy_score = nse(real, dummy)
     model_score = nse(real, pred)
-    print("NSE-values \n", "Dummy:", dummy_score, "\n Model", model_score)
+    print("NSE-values General\n", "Dummy:", dummy_score, "\n Model", model_score)
 
     dummy_scores = []
     model_scores = []
@@ -58,6 +58,7 @@ def metrics(real, pred, dummy):
         model_score = nse(real[:, i], pred[:, i])
         dummy_scores.append(dummy_score)
         model_scores.append(model_score)
+        print("NSE-values for node", i, "\n", "Dummy:", dummy_score, "\n Model", model_score)
 
 
 if __name__ == "__main__":

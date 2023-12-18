@@ -7,9 +7,9 @@ import sys
 import time
 
 from wntr.network import Pattern
-from pump_scheduling.get_set import *
-from main_unrolling.tune_train import prepare_training
-import pump_scheduling.metamodel as metamodel
+from get_set import *
+from main_unrolling.tune_train import prepare_scheduling
+import metamodel as metamodel
 
 
 # Changes the pump schedule values (as multipliers from 0 to 1) for a given pump
@@ -94,8 +94,12 @@ def calculate_objective_function(wn, result):
 
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
-def calculate_objective_function_mm(network_file, result, node_idx, names, timestep=3600):
+def calculate_objective_function_mm(network_file, energy_price, result, node_idx, names, timestep=3600):
     wn = make_network('../data_generation/networks/' + network_file + '.inp')
+
+    wn.add_pattern('EnergyPrice', energy_price)
+    wn.options.energy.global_pattern = 'EnergyPrice'
+
     pump_id_list = wn.pump_name_list
     node_ids = np.array(names['node_ids'], copy=False)
     edge_ids = np.array(names['edge_ids'], copy=False)
@@ -108,15 +112,20 @@ def calculate_objective_function_mm(network_file, result, node_idx, names, times
     pump_filter = np.where(edge_types == 'Pump')[0]
     pump_ids = set(edge_ids[pump_filter])
 
-
     pump_flowrate_raw = result[:, node_idx:] / 1000
-    heads_raw = result[:, :node_idx]
+    pressures_raw = result[:, :node_idx]
 
     # Heads
-    heads = pd.DataFrame(data=heads_raw, index=range(0, timestep * 24, timestep), columns=jt_ids)
-    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, index=range(0, timestep * 24, timestep), columns=pump_ids)
+    pressures = pd.DataFrame(data=pressures_raw, index=range(0, timestep * 24, timestep), columns=jt_ids)
+    heads = pd.DataFrame(data=names['node_heads'], index=range(0, timestep * 24, timestep))
 
-    calculation = total_energy_and_cost(wn, pump_flowrates, heads, pump_id_list, timestep)
+    total_heads = heads.add(pressures, fill_value=0)
+    # total_heads = heads.assign(**res_heads)
+
+    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, index=range(0, timestep * 24, timestep), columns=pump_ids)
+    pump_flowrates = pump_flowrates.clip(lower=0)
+
+    calculation = total_energy_and_cost(wn, pump_flowrates, total_heads, pump_id_list, timestep)
     total_energy = calculation[0]
     total_cost = calculation[1]
 
@@ -164,7 +173,6 @@ def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True
 
     # Setting global energy prices since there is no pattern yet.
     # wn.options.energy.global_price = 3.61e-8
-    wn.options.energy.global_pattern = electricity_values
     # https://www.researchgate.net/publication/238041923_A_mixed_integer_linear_formulation_for_microgrid_economic_scheduling/figures
 
     wn.add_pattern('EnergyPrice', electricity_values)
@@ -184,13 +192,16 @@ def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True
     return output
 
 
-def run_metamodel(network_name, new_pump_pattern_values, electricity_values):
+def run_metamodel(network_name, new_pump_pattern_values):
     # wn = make_network(file)
 
-    datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(
-        network_name, 1)
+    datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_scheduling(
+        network_name)
 
-    one_sample = datasets_MLP[0][0][0].unsqueeze(0)
+    one_sample = datasets_MLP[0][0]
+
+    one_sample[indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
+    one_sample = one_sample.unsqueeze(0)
 
     mm = metamodel.MyMetamodel()
     prediction = mm.predict(one_sample)
@@ -198,10 +209,5 @@ def run_metamodel(network_name, new_pump_pattern_values, electricity_values):
 
     pred = gn.denormalize_multiple(pred_formatted, output_nodes)
 
-    # result = simulate_network(wn)
-    #
-    # critical_nodes = get_junction_nodes(wn)
-    #
-    # output = {'wn': wn, 'result': result, 'critical_nodes': critical_nodes}
 
     return pred, junctions + tanks, output_nodes, names

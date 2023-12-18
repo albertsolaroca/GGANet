@@ -12,17 +12,17 @@ import wandb
 
 import torch.optim as optim
 
-from utils.miscellaneous import read_config, create_folder_structure, initalize_random_generators
-from utils.wandb_logger import save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
-from utils.normalization import *
-from utils.load import *
-from utils.metrics import calculate_metrics
+from .utils.miscellaneous import read_config, create_folder_structure, initalize_random_generators
+from .utils.wandb_logger import save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
+from .utils.normalization import *
+from .utils.load import *
+from .utils.metrics import calculate_metrics
 
-from training.train import training
-from training.test import testing
-from training.models import *
+from .training.train import training
+from .training.test import testing
+from .training.models import *
 
-from training.visualization import plot_R2, plot_loss
+from .training.visualization import plot_R2, plot_loss
 
 
 def default_configuration():
@@ -130,14 +130,14 @@ def prepare_training(network, samples):
         datasets_MLP = [tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP]
 
         node_names = tra_database[0].node_stores[0]["ID"]
-        edge_names = tra_database[0].edge_stores[0]["edge_ID"]
+        # edge_names = tra_database[0].edge_stores[0]["edge_ID"]
         node_types = tra_database[0].node_stores[0]["type"]
         edge_types = tra_database[0].edge_stores[0]["edge_type"]
 
         names = {}
         names["node_ids"] = node_names
         names["node_types"] = node_types
-        names["edge_ids"] = edge_names
+        # names["edge_ids"] = edge_names
         names["edge_types"] = edge_types
 
         prepared_data = (datasets_MLP, gn, indices, junctions, tanks, output_nodes, names)
@@ -147,6 +147,51 @@ def prepare_training(network, samples):
         #     pickle.dump(prepared_data, file)
 
     return datasets_MLP, gn, indices, junctions, tanks, output_nodes, names
+
+def prepare_scheduling(network):
+    wdn = network
+
+    data_folder = '../data_generation/datasets'
+    # retrieve wntr data
+    tst_database = load_raw_dataset_test(wdn, data_folder)
+    # reduce data since we only need one sample
+    tst_database = tst_database[:1]
+
+    tst_dataset, A12_bar = create_dataset(tst_database)
+
+    junctions = (tst_database[0].node_type == JUNCTION_TYPE).numpy().sum()
+    tanks = (tst_database[0].node_type == TANK_TYPE).numpy().sum()
+    output_nodes = len(tst_dataset[0].y[0])  # remove reservoirs
+
+    node_heads = tst_dataset[0].node_stores[0]['x'].numpy()[:, 0]
+    # get GRAPH datasets
+    # later on we should change this and use normal scalers from scikit
+    gn = GraphNormalizer(junctions + tanks, output=['pressure', 'pump_flow'])
+    gn = gn.fit(tst_dataset)
+
+    tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
+    # number of nodes
+    node_size, edge_size = tst_dataset[0].x.size(-1), tst_dataset[0].edge_attr.size(-1)
+
+    # dataloader
+    # transform dataset for MLP
+    # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
+    # A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
+    tst_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tst_dataset)
+
+    node_names = tst_database[0].node_stores[0]["ID"]
+    edge_names = tst_database[0].edge_stores[0]["edge_ID"]
+    node_types = tst_database[0].node_stores[0]["type"]
+    edge_types = tst_database[0].edge_stores[0]["edge_type"]
+
+    names = {}
+    names["node_ids"] = node_names
+    names["node_heads"] = dict(zip(node_names, node_heads))
+    names["node_types"] = node_types
+    names["edge_ids"] = edge_names
+    names["edge_types"] = edge_types
+
+    return tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, names
 
 
 def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nodes, agent):

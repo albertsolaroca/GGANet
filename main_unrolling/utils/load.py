@@ -44,6 +44,20 @@ def load_raw_dataset(wdn_name, data_folder):
 
     return data_tra, data_val, data_tst
 
+def load_raw_dataset_test(wdn_name, data_folder):
+    '''
+    Load tra/val/data for a water distribution network datasets
+    -------
+    wdn_name : string
+        prefix of pickle files to open
+    data_folder : string
+        path to datasets
+    '''
+
+    data_tst = pickle.load(open(f'{data_folder}/test/{wdn_name}.p', "rb"))
+
+    return data_tst
+
 
 def create_dataset(database, normalizer=None, output='pressure'):
     '''
