@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_sched_flow_3']
+network: ['KYPIPE Example 8 fix']
 
 
 # number of training samples to use (if < than total)
@@ -59,7 +59,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 300
+    num_epochs: 2000
     batch_size: 128
 
 

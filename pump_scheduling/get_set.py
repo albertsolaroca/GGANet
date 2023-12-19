@@ -50,6 +50,9 @@ def get_junction_nodes(wn):
     junction_nodes = wn.junction_name_list
     return junction_nodes
 
+def get_tank_nodes(wn):
+    tank_nodes = wn.tank_name_list
+    return tank_nodes
 
 def set_pump_efficiency(wn, efficiency=75):
     wn.options.energy.global_efficiency = efficiency

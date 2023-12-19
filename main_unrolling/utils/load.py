@@ -54,7 +54,7 @@ def load_raw_dataset_test(wdn_name, data_folder):
         path to datasets
     '''
 
-    data_tst = pickle.load(open(f'{data_folder}/test/{wdn_name}.p', "rb"))
+    data_tst = pickle.load(open(f'{data_folder}/train/{wdn_name}.p', "rb"))
 
     return data_tst
 

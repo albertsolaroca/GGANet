@@ -316,15 +316,13 @@ class UnrollingModel(nn.Module):
     def forward(self, x, num_steps=1):
 
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        h0, d, edge_features = (x[:, self.indices['base_heads']].float(),
-                                x[:, self.indices['diameter']].float(),
-                                x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
+        h0, d = (x[:, self.indices['base_heads']].float(),
+                                x[:, self.indices['diameter']].float())
 
         coeff_r, coeff_n = (x[:, self.indices['coeff_r']].float(),
                             x[:, self.indices['coeff_n']].float())
 
-        res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(
-            edge_features)
+        res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(d)
 
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow
         res_q_h = self.hidq0_h(q)  # 4.14
@@ -371,18 +369,18 @@ class UnrollingModelQ(nn.Module):
         self.num_heads = junctions + indices['base_heads'].stop
         self.demand_nodes = junctions
         self.demand_start = indices['demand_timeseries'].start
-        self.num_flows = indices['diameter'].stop - indices['diameter'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
         self.num_blocks = num_layers
         self.static_feat_end = indices['pump_schedules'].start
         # To calculate amount of pumps we assume that the time period is 24
         self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
+        self.num_flows = indices['diameter'].stop - indices['diameter'].start + self.pump_number
 
-        self.hidq0_h = Linear(self.num_flows + self.pump_number, self.num_heads)  # 4.14
-        self.hids_q = Linear(self.demand_nodes, self.num_flows + self.pump_number)  # 4.6/4.10
+        self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
+        self.hids_q = Linear(self.demand_nodes, self.num_flows)  # 4.6/4.10
         self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  # 4.7/4.11
-        self.hidh0_q = Linear(self.num_base_heads, self.num_flows + self.pump_number)  # 4.8/4.12
-        self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows + self.pump_number),
+        self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  # 4.8/4.12
+        self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows),
                                 nn.ReLU())  # 4.9/4.13
 
         self.hid_hf = nn.ModuleList()
@@ -392,26 +390,24 @@ class UnrollingModelQ(nn.Module):
         self.hidD_q = nn.ModuleList()
 
         for i in range(self.num_blocks):
-            self.hid_hf.append(Sequential(Linear(self.num_heads, self.num_flows + self.pump_number), nn.PReLU()))
-            self.hid_fh.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_heads), nn.ReLU()))
-            self.resq.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_heads), nn.ReLU()))
-            self.hidD_q.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_flows + self.pump_number)))
-            self.hidD_h.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_heads), nn.ReLU()))
+            self.hid_hf.append(Sequential(Linear(self.num_heads, self.num_flows), nn.PReLU()))
+            self.hid_fh.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
+            self.resq.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
+            self.hidD_q.append(Sequential(Linear(self.num_flows, self.num_flows)))
+            self.hidD_h.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
 
-        self.out = Linear(self.num_flows + self.pump_number, num_outputs - self.pump_number)
+        self.out = Linear(self.num_flows, num_outputs - self.pump_number)
 
     def forward(self, x, num_steps=1):
 
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        h0, d, edge_features = (x[:, self.indices['base_heads']].float(),
-                                x[:, self.indices['diameter']].float(),
-                                x[:, self.indices['diameter'].start:self.indices['diameter'].stop].float())
+        h0, d = (x[:, self.indices['base_heads']].float(),
+                                x[:, self.indices['diameter']].float())
 
         coeff_r, coeff_n = (x[:, self.indices['coeff_r']].float(),
                             x[:, self.indices['coeff_n']].float())
 
-        res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(
-            edge_features)
+        res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(d)
 
         # This is the educated "guess" of the flow for the pipes
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()

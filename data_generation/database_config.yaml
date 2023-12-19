@@ -1,9 +1,9 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['FOS_pump_sched_flow_single'],
+dataset_names : ['CalibrationNetworks_c'],
 
 # number of trials
-n_trials : [10],
+n_trials : [1],
 
 }
