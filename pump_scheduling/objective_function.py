@@ -70,7 +70,6 @@ def total_energy_and_cost(wn, pump_flowrate, head, pump_id_list, timestep=3600):
     return total_energy, total_cost
 
 
-
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
 def calculate_objective_function(wn, result):
@@ -85,8 +84,16 @@ def calculate_objective_function(wn, result):
     total_cost = calculation[1]
 
     critical_node_pressures = []
+
+    junctions_nodes = get_junction_nodes(wn)
+    tank_nodes = get_tank_nodes(wn)
+
     for node in get_junction_nodes(wn):
         pressure = min(get_pressure_at_node(result, node))
+        critical_node_pressures.append(pressure)
+
+    for node in get_tank_nodes(wn):
+        pressure = min(get_head_at_node(result, node))
         critical_node_pressures.append(pressure)
 
     return total_energy, total_cost, critical_node_pressures
@@ -96,6 +103,8 @@ def calculate_objective_function(wn, result):
 # and list of pump_ids, list of critical nodes and demand pattern id
 def calculate_objective_function_mm(network_file, energy_price, result, node_idx, names, timestep=3600):
     wn = make_network('../data_generation/networks/' + network_file + '.inp')
+    # get wn patterns
+    pats = wn.patterns
 
     wn.add_pattern('EnergyPrice', energy_price)
     wn.options.energy.global_pattern = 'EnergyPrice'
@@ -120,7 +129,6 @@ def calculate_objective_function_mm(network_file, energy_price, result, node_idx
     heads = pd.DataFrame(data=names['node_heads'], index=range(0, timestep * 24, timestep))
 
     total_heads = heads.add(pressures, fill_value=0)
-    # total_heads = heads.assign(**res_heads)
 
     pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, index=range(0, timestep * 24, timestep), columns=pump_ids)
     pump_flowrates = pump_flowrates.clip(lower=0)
@@ -139,7 +147,7 @@ def calculate_objective_function_mm(network_file, energy_price, result, node_idx
 
 def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True):
     wn = make_network(file)
-
+    pats = wn.patterns
     # Minimum and required pressure for water network
     wn.options.hydraulic.viscosity = 1.0
     wn.options.hydraulic.specific_gravity = 1.0
@@ -185,9 +193,7 @@ def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True
 
     result = simulate_network(wn)
 
-    critical_nodes = get_junction_nodes(wn)
-
-    output = {'wn': wn, 'result': result, 'critical_nodes': critical_nodes}
+    output = {'wn': wn, 'result': result}
 
     return output
 
@@ -208,6 +214,5 @@ def run_metamodel(network_name, new_pump_pattern_values):
     pred_formatted = prediction.squeeze().reshape(-1, 1)
 
     pred = gn.denormalize_multiple(pred_formatted, output_nodes)
-
 
     return pred, junctions + tanks, output_nodes, names

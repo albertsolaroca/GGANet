@@ -2,13 +2,21 @@
 The following example demonstrates how to import WNTR, generate a water network
 model from an INP file, simulate hydraulics, and plot simulation results on the network.
 """
-from matplotlib import pyplot as plt
-import pysimdeum
-
 import wntr
 import time
 from objective_function import calculate_objective_function, calculate_objective_function_mm, run_WNTR_model, run_metamodel
 import numpy as np
+
+from pymoo.core.problem import ElementwiseProblem
+from pymoo.algorithms.soo.nonconvex.ga import GA
+from pymoo.problems import get_problem
+from pymoo.termination import get_termination
+from pymoo.optimize import minimize
+from pymoo.operators.mutation.bitflip import BitflipMutation
+from pymoo.operators.crossover.pntx import TwoPointCrossover
+from pymoo.algorithms.moo.nsga2 import NSGA2
+
+from pymoo.operators.sampling.rnd import BinaryRandomSampling
 
 
 def optimize_pump_schedule_WNTR(network_file, new_pump_pattern_values):
@@ -49,23 +57,14 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
     total_energy, total_cost, nodal_pressures = (
         calculate_objective_function_mm(network_file, electricity_price_values, output, node_idx, names))
 
-    minimum_pressure_required = [5 for i in range(len(nodal_pressures))]
+    minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
 
     pressure_surplus = [-nodal_pressures[j] + minimum_pressure_required[j] for j in range(len(nodal_pressures))]
 
     return [total_energy, total_cost], pressure_surplus
 
 
-from pymoo.core.problem import ElementwiseProblem
-from pymoo.algorithms.soo.nonconvex.ga import GA
-from pymoo.problems import get_problem
-from pymoo.termination import get_termination
-from pymoo.optimize import minimize
-from pymoo.operators.mutation.bitflip import BitflipMutation
-from pymoo.operators.crossover.pntx import TwoPointCrossover
-from pymoo.algorithms.moo.nsga2 import NSGA2
 
-from pymoo.operators.sampling.rnd import BinaryRandomSampling
 
 
 class SchedulePump(ElementwiseProblem):
@@ -82,8 +81,8 @@ class SchedulePump(ElementwiseProblem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         # Minimization function
-        # evaluation = optimize_pump_schedule_WNTR(self.network_file, [x])
-        evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
+        evaluation = optimize_pump_schedule_WNTR(self.network_file, [x])
+        # evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
 
         # The objective of the function. Total energy to minimize
         out["F"] = [evaluation[0][0], evaluation[0][1]]
@@ -102,26 +101,26 @@ def make_problem(input_file):
 
 
 if __name__ == "__main__":
-    print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_0', [[1] * 24]))
-    print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
+    # print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1] * 24]))
+    # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
 
     # problem = make_problem('FOS_pump_sched_flow')
-    # problem = make_problem('FOS_pump_sched_flow_single')
-    #
-    # algorithm = NSGA2(pop_size=100,
-    #                   sampling=BinaryRandomSampling(),
-    #                   # crossover=TwoPointCrossover(),
-    #                   mutation=BitflipMutation(),
-    #                   eliminate_duplicates=True)
-    #
-    # termination = get_termination("n_gen", 1)
-    #
-    # res = minimize(problem,
-    #                algorithm,
-    #                termination,
-    #                seed=1,
-    #                verbose=True)
-    #
-    # print("Best solution found: %s" % res.X.astype(int))
-    # print("Function value: %s" % res.F)
-    # print("Constraint violation: %s" % res.CV)
+    problem = make_problem('FOS_pump_sched_flow_single')
+
+    algorithm = NSGA2(pop_size=100,
+                      sampling=BinaryRandomSampling(),
+                      # crossover=TwoPointCrossover(),
+                      mutation=BitflipMutation(),
+                      eliminate_duplicates=True)
+
+    termination = get_termination("n_gen", 5)
+
+    res = minimize(problem,
+                   algorithm,
+                   termination,
+                   seed=1,
+                   verbose=True)
+
+    print("Best solution found: %s" % res.X.astype(int))
+    print("Function value: %s" % res.F)
+    print("Constraint violation: %s" % res.CV)
