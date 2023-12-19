@@ -51,7 +51,7 @@ def get_junction_nodes(wn):
     return junction_nodes
 
 
-def set_pump_efficiency(wn, efficiency=0.75):
+def set_pump_efficiency(wn, efficiency=75):
     wn.options.energy.global_efficiency = efficiency
     return
 
