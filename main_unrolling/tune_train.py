@@ -12,17 +12,17 @@ import wandb
 
 import torch.optim as optim
 
-from .utils.miscellaneous import read_config, create_folder_structure, initalize_random_generators
-from .utils.wandb_logger import save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
-from .utils.normalization import *
-from .utils.load import *
-from .utils.metrics import calculate_metrics
+from utils.miscellaneous import read_config, create_folder_structure, initalize_random_generators
+from utils.wandb_logger import save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
+from utils.normalization import *
+from utils.load import *
+from utils.metrics import calculate_metrics
 
-from .training.train import training
-from .training.test import testing
-from .training.models import *
+from training.train import training
+from training.test import testing
+from training.models import *
 
-from .training.visualization import plot_R2, plot_loss
+from training.visualization import plot_R2, plot_loss
 
 
 def default_configuration():
@@ -328,7 +328,7 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
 
 # Main method
 if __name__ == "__main__":
-    agent = False
+    agent = True
     if not agent:
         default_config = default_configuration()
         datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(default_config.network, default_config.samples)
