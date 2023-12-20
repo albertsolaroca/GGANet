@@ -18,10 +18,10 @@ import time
 from scipy.optimize import curve_fit
 
 import demand_generation
-from data_generation.data_get_set import load_water_network, get_attribute_all_links, get_attribute_all_nodes
+from data_get_set import load_water_network, get_attribute_all_links, get_attribute_all_nodes, train_val_test
 
 
-def generate_binary_string(length=24, zero_probability=0.15):
+def generate_binary_string(length=24, zero_probability=0.8):
     binary_schedule = []
     for _ in range(length):
         if np.random.random() < zero_probability:
@@ -99,7 +99,7 @@ def create_dataset(network, path, n_trials, max_fails=1e6, continuous=False, ran
     times = []
     for i in tqdm(range(n_trials), network):
         flag = False
-        if i != 0 and i % 1000 == 0:
+        if i != 0 and i % 100 == 0:
             randomized_demands = demand_generation.generate_demand_patterns()
 
         while not flag:
@@ -379,7 +379,7 @@ def create_and_save(network, net_path, n_trials, out_path, max_fails=1e4, contin
 
     start_time = time.time()
     all_data += create_dataset(network, net_path, n_trials, max_fails=max_fails, continuous=continuous,
-                               randomized_demands=randomized_demands, count=2)
+                               randomized_demands=randomized_demands, count=1)
     end_time = time.time()
     execution_time = end_time - start_time
     print(f"Execution time: {execution_time:.6f} seconds\n")
@@ -490,7 +490,7 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
         # Don't change the base_value of the nodes
-        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(0.1, 1.5, 0.1))
+        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(1, 4, 0.1))
         # base_val = node.demand_timeseries_list[0].base_value
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if continuous:

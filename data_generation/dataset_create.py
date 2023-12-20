@@ -1,6 +1,7 @@
 import os
 import sys
-from wntr_utils import import_config, get_wdn_components, create_and_save
+from wntr_utils import import_config, create_and_save
+from data_get_set import get_wdn_components
 import argparse
 import traceback
 import demand_generation
