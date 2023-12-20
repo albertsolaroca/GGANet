@@ -240,15 +240,15 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
     lr_rate = configuration.divisor
     lr_epoch = configuration.epoch_frequency
     num_epochs = configuration.num_epochs
-    if configuration.clipper:
-        max_norm = configuration.clipper
-    else:
-        max_norm = None
+    # if configuration.clipper:
+    #     max_norm = configuration.clipper
+    # else:
+    #     max_norm = None
     alpha = 0
 
     model, tra_losses, val_losses, elapsed_time = training(model, optimizer, tra_loader, val_loader,
                                                            patience=patience, report_freq=0,
-                                                           n_epochs=num_epochs, max_norm=max_norm,
+                                                           n_epochs=num_epochs, max_norm=None,
                                                            alpha=alpha, lr_rate=lr_rate, lr_epoch=lr_epoch,
                                                            normalization=None,
                                                            path=f'{results_folder}/{wdn}/{algorithm}/')
