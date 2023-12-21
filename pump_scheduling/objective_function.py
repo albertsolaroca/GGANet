@@ -147,7 +147,6 @@ def calculate_objective_function_mm(network_file, energy_price, result, node_idx
 
 def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True):
     wn = make_network(file)
-    pats = wn.patterns
     # Minimum and required pressure for water network
     wn.options.hydraulic.viscosity = 1.0
     wn.options.hydraulic.specific_gravity = 1.0
@@ -205,9 +204,9 @@ def run_metamodel(network_name, new_pump_pattern_values):
         network_name)
 
     one_sample = datasets_MLP[0][0]
-
-    one_sample[indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
-    one_sample = one_sample.unsqueeze(0)
+    one_sample = one_sample.repeat(len(new_pump_pattern_values[0]), 1)
+    one_sample[:, indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
+    # one_sample = one_sample.unsqueeze(
 
     mm = metamodel.MyMetamodel()
     prediction = mm.predict(one_sample)

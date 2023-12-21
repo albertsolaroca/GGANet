@@ -1,9 +1,9 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['CalibrationNetworks_c'],
+dataset_names : ['KYPIPE Example 8 fix'],
 
 # number of trials
-n_trials : [1],
+n_trials : [100],
 
 }

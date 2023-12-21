@@ -8,7 +8,7 @@ import networkx as nx
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
-from main_unrolling.training.test import testing
+from training.test import testing
 
 
 # Plot the distribution of the resiliences

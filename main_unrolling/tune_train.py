@@ -1,7 +1,7 @@
 import os
+import pickle
 from types import SimpleNamespace
 
-import numpy as np
 import pandas as pd
 import yaml
 from sklearn.metrics import r2_score
@@ -12,10 +12,11 @@ import wandb
 
 import torch.optim as optim
 
+from utils.load import load_raw_dataset, create_dataset_MLP_from_graphs, create_dataset, JUNCTION_TYPE, TANK_TYPE, \
+    load_raw_dataset_test
 from utils.miscellaneous import read_config, create_folder_structure, initalize_random_generators
-from utils.wandb_logger import save_response_graphs_in_ML_tracker, save_metric_graph_in_ML_tracker
-from utils.normalization import *
-from utils.load import *
+from utils.normalization import GraphNormalizer
+from utils.wandb_logger import save_metric_graph_in_ML_tracker
 from utils.metrics import calculate_metrics
 
 from training.train import training
@@ -307,7 +308,7 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
     if agent:
         for i in [0, 1, 7, 36]:
             names = {0: 'Reservoir', 1: 'Next to Reservoir', 7: 'Random Node', 36: 'Tank'}
-            save_response_graphs_in_ML_tracker(real, pred, names[i], i)
+            # save_response_graphs_in_ML_tracker(real, pred, names[i], i)
         wandb.log({"min_val_loss": np.min(val_losses)})
         wandb.log({"Loss": wandb.Image(loss_plot + ".png")})
         wandb.log({"R2": wandb.Image(R2_plot + ".png")})
@@ -328,7 +329,7 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
 
 # Main method
 if __name__ == "__main__":
-    agent = True
+    agent = False
     if not agent:
         default_config = default_configuration()
         datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(default_config.network, default_config.samples)

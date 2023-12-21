@@ -4,10 +4,11 @@ model from an INP file, simulate hydraulics, and plot simulation results on the 
 """
 import wntr
 import time
+
 from objective_function import calculate_objective_function, calculate_objective_function_mm, run_WNTR_model, run_metamodel
 import numpy as np
 
-from pymoo.core.problem import ElementwiseProblem
+from pymoo.core.problem import ElementwiseProblem, Problem
 from pymoo.algorithms.soo.nonconvex.ga import GA
 from pymoo.problems import get_problem
 from pymoo.termination import get_termination
@@ -37,7 +38,7 @@ def optimize_pump_schedule_WNTR(network_file, new_pump_pattern_values):
     total_energy = results[0]
     total_cost = results[1]
     nodal_pressures = results[2]
-    minimum_pressure_required = [5 for i in range(len(nodal_pressures))]
+    minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
 
     pressure_surplus = [-nodal_pressures[j] + minimum_pressure_required[j] for j in range(len(nodal_pressures))]
 
@@ -53,17 +54,24 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
     # Run the model with the pump pattern values specified
     output, node_idx, pumps_idx, names = run_metamodel(network_file, new_pump_pattern_values)
     # Calculate the objective function, which is the total energy, cost and minimum pressure per node during the run
+    total_energy = []
+    total_cost = []
+    total_pressure_surplus = []
 
-    total_energy, total_cost, nodal_pressures = (
-        calculate_objective_function_mm(network_file, electricity_price_values, output, node_idx, names))
+    for i in range(0, len(output), 24):
+        this = output[i:(24 + i)]
+        energy, cost, nodal_pressures = (
+        calculate_objective_function_mm(network_file, electricity_price_values, output[i:(24+i)], node_idx, names))
 
-    minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
+        minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
 
-    pressure_surplus = [-nodal_pressures[j] + minimum_pressure_required[j] for j in range(len(nodal_pressures))]
+        pressure_surplus = [-nodal_pressures[j] + minimum_pressure_required[j] for j in range(len(nodal_pressures))]
 
-    return [total_energy, total_cost], pressure_surplus
+        total_energy.append(energy)
+        total_cost.append(cost)
+        total_pressure_surplus.append(pressure_surplus)
 
-
+    return [total_energy, total_cost], total_pressure_surplus
 
 
 
@@ -90,8 +98,32 @@ class SchedulePump(ElementwiseProblem):
         # The constraints of the function, as in pressure violations per node
         out["G"] = evaluation[1]
 
+class SchedulePumpBatch(Problem):
 
-def make_problem(input_file):
+    def __init__(self, network_file, n_var=24, n_ieq_constr=36):
+        super().__init__(n_var=n_var,
+                         n_obj=2,
+                         n_ieq_constr=n_ieq_constr,
+                         xl=0,
+                         xu=1,
+                         vtype=bool)
+
+        self.network_file = network_file
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        # Minimization function
+        # evaluation = optimize_pump_schedule_WNTR(self.network_file, [x])
+        evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
+
+        # The objective of the function. Total energy to minimize
+        out["F"] = [evaluation[0][0], evaluation[0][1]]
+        achtien = evaluation[1][18]
+        # The constraints of the function, as in pressure violations per node
+        out["G"] = evaluation[1]
+
+
+
+def make_problem(input_file='FOS_pump_sched_flow_single_1'):
     wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
     time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)
     junctions = len(wn.junction_name_list)
@@ -99,13 +131,22 @@ def make_problem(input_file):
 
     return SchedulePump(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions+tanks)
 
+def make_problem_mm(input_file='FOS_pump_sched_flow_single'):
+    wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
+    time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)
+    junctions = len(wn.junction_name_list)
+    tanks = len(wn.tank_name_list)
+
+    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions+tanks)
+
 
 if __name__ == "__main__":
     # print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1] * 24]))
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
 
     # problem = make_problem('FOS_pump_sched_flow')
-    problem = make_problem('FOS_pump_sched_flow_single')
+    # problem = make_problem()
+    problem = make_problem_mm()
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
@@ -113,14 +154,21 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 5)
+    termination = get_termination("n_gen", 2)
 
     res = minimize(problem,
                    algorithm,
                    termination,
                    seed=1,
-                   verbose=True)
+                   verbose=True,)
+
+    pareto_front = res.F
+    sorted_indices = pareto_front[:, 0].argsort()
+    sorted_solutions = res.X[sorted_indices]
+    print(len(sorted_solutions))
 
     print("Best solution found: %s" % res.X.astype(int))
+
+    evaluation = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)])
     print("Function value: %s" % res.F)
     print("Constraint violation: %s" % res.CV)
