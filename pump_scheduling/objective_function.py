@@ -2,11 +2,7 @@
 import numpy as np
 import pandas as pd
 import torch
-import wntr
-import sys
-import time
 
-from wntr.network import Pattern
 from get_set import *
 from main_unrolling.tune_train import prepare_scheduling
 import metamodel as metamodel
@@ -85,9 +81,6 @@ def calculate_objective_function(wn, result):
 
     critical_node_pressures = []
 
-    junctions_nodes = get_junction_nodes(wn)
-    tank_nodes = get_tank_nodes(wn)
-
     for node in get_junction_nodes(wn):
         pressure = min(get_pressure_at_node(result, node))
         critical_node_pressures.append(pressure)
@@ -140,7 +133,7 @@ def calculate_objective_function_mm(network_file, energy_price, result, node_idx
     critical_node_pressures = []
     for node in range(node_idx):
         pressure = min(result[:, node])
-        critical_node_pressures.append(pressure)
+        critical_node_pressures.append(pressure.numpy())
 
     return total_energy, total_cost, critical_node_pressures
 
@@ -204,9 +197,13 @@ def run_metamodel(network_name, new_pump_pattern_values):
         network_name)
 
     one_sample = datasets_MLP[0][0]
-    one_sample = one_sample.repeat(len(new_pump_pattern_values[0]), 1)
+
+    if len(new_pump_pattern_values) > 1:
+        one_sample = one_sample.repeat(len(new_pump_pattern_values[0]), 1)
+    else:
+        one_sample = one_sample.unsqueeze(0)
+
     one_sample[:, indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
-    # one_sample = one_sample.unsqueeze(
 
     mm = metamodel.MyMetamodel()
     prediction = mm.predict(one_sample)

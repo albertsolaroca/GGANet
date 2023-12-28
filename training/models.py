@@ -366,7 +366,7 @@ class UnrollingModelQ(nn.Module):
         super(UnrollingModelQ, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        self.num_heads = junctions + indices['base_heads'].stop
+        # self.num_heads = junctions + indices['base_heads'].stop
         self.demand_nodes = junctions
         self.demand_start = indices['demand_timeseries'].start
         self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
@@ -375,6 +375,7 @@ class UnrollingModelQ(nn.Module):
         # To calculate amount of pumps we assume that the time period is 24
         self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
         self.num_flows = indices['diameter'].stop - indices['diameter'].start + self.pump_number
+        self.num_heads = num_outputs - self.pump_number
 
         self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
         self.hids_q = Linear(self.demand_nodes, self.num_flows)  # 4.6/4.10
@@ -412,11 +413,7 @@ class UnrollingModelQ(nn.Module):
         # This is the educated "guess" of the flow for the pipes
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).float()
         # This is the educated "guess" of the flow for the pumps
-        pump_flows = torch.mul(coeff_n * coeff_r, torch.pow(q[:, 0:self.pump_number], coeff_n - 1))
-
-        q = torch.cat((q, pump_flows), dim=1)
-
-        res_q_h = self.hidq0_h(q)  # 4.14
+        # pump_flows = torch.mul(coeff_n * coeff_r, torch.pow(q[:, 0:self.pump_number], coeff_n - 1))
 
         predictions = []
         for step in range(num_steps):
@@ -427,26 +424,33 @@ class UnrollingModelQ(nn.Module):
 
             pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
                               list(range(self.pump_number))]
-
             pump_settings = x[:, pump_positions]
-            q_ps = q.clone()
-            q_ps[:, -self.pump_number:] = pump_settings
-            # q_ps[:, -self.pump_number:] = torch.mul(pump_settings,  q[:, -self.pump_number:])
+
+            if step == 0:
+                q = torch.cat((q, pump_settings), dim=1)
+                res_q_h = self.hidq0_h(q)  # 4.14
+            else:
+                q_ps = q.clone()
+                prev_pump_flows = q[:, -self.pump_number:]
+                prev_pump_flows = torch.clamp(prev_pump_flows, min=0)
+                new_pump_flows = torch.mul(torch.mul(pump_settings, coeff_n * coeff_r), torch.pow(prev_pump_flows, coeff_n - 1))
+                q_ps[:, -self.pump_number:] = new_pump_flows
+                q = q_ps
 
             res_s_q = self.hids_q(s)
 
             for i in range(self.num_blocks - 1):
-                D_q = self.hidD_q[i](torch.mul(q_ps, res_S_q))
+                D_q = self.hidD_q[i](torch.mul(q, res_S_q))
                 D_h = self.hidD_h[i](D_q)
-                hid_x = torch.mul(D_q, torch.sum(torch.stack([q_ps, res_s_q, res_h0_q]), dim=0))
+                hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
                 h = self.hid_fh[i](hid_x)
                 hid_x = self.hid_hf[i](torch.mul(torch.sum(torch.stack([h, res_h0_h, res_q_h]), dim=0), D_h))
-                q_ps = torch.sub(q_ps, hid_x)
-                res_q_h = self.resq[i](q_ps)
+                q = torch.sub(q, hid_x)
+                res_q_h = self.resq[i](q)
 
             # Append the prediction for the current time step
-            pred_heads = self.out(q_ps)
-            pred_pump_flows = q_ps[:, -self.pump_number:]
+            pred_heads = h
+            pred_pump_flows = q[:, -self.pump_number:]
             prediction = torch.cat((pred_heads, pred_pump_flows), dim=1)
             predictions.append(prediction)
 
