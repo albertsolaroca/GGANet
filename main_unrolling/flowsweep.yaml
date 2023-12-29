@@ -21,7 +21,7 @@ parameters:
   epoch_frequency:
     values: [10, 50, 100]
   batch_size:
-    values: [128, 256, 512]
+    values: [128, 256]
   learning_rate:
     values: [0.01, 0.001]
   weight_decay:
