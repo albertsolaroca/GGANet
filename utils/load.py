@@ -170,6 +170,8 @@ def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', '
                 x_ = item.edge_attr[ix_pump, COEFF_R_INDEX]
             elif feature == 'coeff_n':
                 x_ = item.edge_attr[ix_pump, COEFF_N_INDEX]
+            # elif feature == 'type':
+            #     x_ = item.x[:, NODE_TYPE_INDEX]
             else:
                 raise ValueError(f'Feature {feature} not supported.')
 

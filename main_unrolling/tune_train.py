@@ -131,14 +131,12 @@ def prepare_training(network, samples):
         datasets_MLP = [tra_dataset_MLP, val_dataset_MLP, tst_dataset_MLP]
 
         node_names = tra_database[0].node_stores[0]["ID"]
-        # edge_names = tra_database[0].edge_stores[0]["edge_ID"]
         node_types = tra_database[0].node_stores[0]["type"]
         edge_types = tra_database[0].edge_stores[0]["edge_type"]
 
         names = {}
         names["node_ids"] = node_names
         names["node_types"] = node_types
-        # names["edge_ids"] = edge_names
         names["edge_types"] = edge_types
 
         prepared_data = (datasets_MLP, gn, indices, junctions, tanks, output_nodes, names)
