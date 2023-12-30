@@ -429,18 +429,19 @@ class UnrollingModelQ(nn.Module):
             if step == 0:
                 q = torch.cat((q, pump_settings), dim=1)
                 res_q_h = self.hidq0_h(q)  # 4.14
-            else:
-                q_ps = q.clone()
-                prev_pump_flows = q[:, -self.pump_number:]
-                prev_pump_flows = torch.clamp(prev_pump_flows, min=0)
-                new_pump_flows = torch.mul(torch.mul(pump_settings, coeff_n * coeff_r), torch.pow(prev_pump_flows, coeff_n - 1))
-                q_ps[:, -self.pump_number:] = new_pump_flows
-                q = q_ps
 
             res_s_q = self.hids_q(s)
 
             for i in range(self.num_blocks - 1):
                 D_q = self.hidD_q[i](torch.mul(q, res_S_q))
+                if step > 0:
+                    prev_pump_flows = q[:, -self.pump_number:]
+                    prev_pump_flows = torch.clamp(prev_pump_flows, min=0)
+                    new_pump_derivative = torch.mul(torch.mul(pump_settings, coeff_n * coeff_r),
+                                                torch.pow(prev_pump_flows, coeff_n - 1))
+                    D_q_new = D_q.clone()
+                    D_q_new[:, -self.pump_number:] = new_pump_derivative
+                    D_q = D_q_new
                 D_h = self.hidD_h[i](D_q)
                 hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
                 h = self.hid_fh[i](hid_x)

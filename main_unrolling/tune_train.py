@@ -327,7 +327,7 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
 
 # Main method
 if __name__ == "__main__":
-    agent = False
+    agent = True
     if not agent:
         default_config = default_configuration()
         datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(default_config.network, default_config.samples)
