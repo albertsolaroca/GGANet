@@ -5,6 +5,8 @@ model from an INP file, simulate hydraulics, and plot simulation results on the 
 import wntr
 import time
 
+from pymoo.algorithms.moo.nsga3 import NSGA3
+
 from objective_function import calculate_objective_function, calculate_objective_function_mm, run_WNTR_model, \
     run_metamodel
 import numpy as np
@@ -93,7 +95,7 @@ class SchedulePump(ElementwiseProblem):
 
     def __init__(self, network_file, n_var=24, n_ieq_constr=36, switch_penalty=0):
         super().__init__(n_var=n_var,
-                         n_obj=2,
+                         n_obj=3,
                          n_ieq_constr=n_ieq_constr,
                          xl=0,
                          xu=1,
@@ -104,12 +106,12 @@ class SchedulePump(ElementwiseProblem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         # Minimization function
-        # evaluation = optimize_pump_schedule_WNTR(self.network_file, [x])
-        evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
+        evaluation = optimize_pump_schedule_WNTR(self.network_file, [x])
+        # evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
 
         # The objective of the function. Total energy and total cost to minimize
         # The cost is modified with a switch penalty term
-        out["F"] = [evaluation[0][0], evaluation[0][1] + self.switch_penalty * count_switches(x)]
+        out["F"] = [evaluation[0][0], evaluation[0][1], self.switch_penalty * count_switches(x)]
 
         # The constraints of the function, as in pressure violations per node
         out["G"] = evaluation[1]
@@ -143,7 +145,7 @@ class SchedulePumpBatch(Problem):
         out["G"] = evaluation[1]
 
 
-def make_problem(input_file='FOS_pump_sched_flow_single'):
+def make_problem(input_file='FOS_pump_sched_flow_single_1'):
     wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
     time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)  + 1# EPANET bug
     time_discrete = 24
@@ -167,8 +169,8 @@ if __name__ == "__main__":
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
 
     # problem = make_problem('FOS_pump_sched_flow')
-    # problem = make_problem()
-    problem = make_problem_mm()
+    problem = make_problem()
+    # problem = make_problem_mm()
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
@@ -176,7 +178,7 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 10)
+    termination = get_termination("n_gen", 20)
 
     res = minimize(problem,
                    algorithm,
