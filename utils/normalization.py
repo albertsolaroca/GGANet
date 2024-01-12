@@ -94,7 +94,9 @@ class GraphNormalizer:
                 if element == 'pressure':
                     self.scalers[element] = self.scalers[element].fit(y[:, :self.junct_and_tanks].reshape(-1, 1))
                 else:
-                    self.scalers[element] = self.scalers[element].fit(y[:, self.junct_and_tanks:].reshape(-1, 1))
+                    if len(y[:, self.junct_and_tanks:].reshape(-1, 1)) > 0:
+                        # What is beyond the junct_and_tanks is the pump flow if there are pumps
+                        self.scalers[element] = self.scalers[element].fit(y[:, self.junct_and_tanks:].reshape(-1, 1))
         else:
             self.scalers[self.output] = self.scalers[self.output].fit(y.reshape(-1, 1))
 
@@ -120,9 +122,14 @@ class GraphNormalizer:
                         if element == 'pressure':
                             pressure = torch.tensor(self.scalers[element].transform(graph.y[i][:self.junct_and_tanks].numpy().reshape(-1, 1)).reshape(-1))
                         else:
-                            pump_flow = torch.tensor(self.scalers[element].transform(graph.y[i][self.junct_and_tanks:].numpy().reshape(-1, 1)).reshape(-1))
-                    mediate = torch.cat((pressure, pump_flow), dim=0)
-                    transformed_y.append(torch.cat((pressure, pump_flow), dim=0))
+                            if len(graph.y[i][self.junct_and_tanks:, :].reshape(-1, 1)) > 0:
+                                pump_flow = torch.tensor(self.scalers[element].transform(graph.y[i][self.junct_and_tanks:].numpy().reshape(-1, 1)).reshape(-1))
+                            else:
+                                pump_flow = None
+                    if pump_flow is not None:
+                        transformed_y.append(torch.cat((pressure, pump_flow), dim=0))
+                    else:
+                        transformed_y.append(pressure)
                 else:
                     transformed_y.append(
                         torch.tensor(self.scalers[self.output].transform(graph.y[i].numpy().reshape(-1, 1)).reshape(-1)))
@@ -167,10 +174,14 @@ class GraphNormalizer:
         array_only_pressures = array_reshaped[:, :self.junct_and_tanks].reshape(-1, 1)
         array_only_flows = array_reshaped[:, self.junct_and_tanks:].reshape(-1, 1)
         array_pressures = self.inverse_transform_array(array_only_pressures, 'pressure')
-        array_flow = self.inverse_transform_array(array_only_flows, 'pump_flow')
 
-        pred = torch.cat((array_pressures.reshape(-1, (self.junct_and_tanks)),
+        if len(array_only_flows) > 0:
+            array_flow = self.inverse_transform_array(array_only_flows, 'pump_flow')
+
+            pred = torch.cat((array_pressures.reshape(-1, (self.junct_and_tanks)),
                           array_flow.reshape(-1, output_nodes - (self.junct_and_tanks))), axis=1)
+        else:
+            pred = array_pressures.reshape(-1, (self.junct_and_tanks))
 
         return pred
 def from_graphs_to_pandas(graphs):

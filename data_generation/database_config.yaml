@@ -1,9 +1,9 @@
 # Dataset configuration
 {
 # networks names
-dataset_names : ['KYPIPE Example 8 fix'],
+dataset_names : ['FOS_pump_2'],
 
 # number of trials
-n_trials : [100],
+n_trials : [1000],
 
 }

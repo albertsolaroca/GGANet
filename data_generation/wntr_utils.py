@@ -21,7 +21,7 @@ import demand_generation
 from data_get_set import load_water_network, get_attribute_all_links, get_attribute_all_nodes, train_val_test
 
 
-def generate_binary_string(length=24, zero_probability=0.8):
+def generate_binary_string(length=24, zero_probability=0.2):
     binary_schedule = []
     for _ in range(length):
         if np.random.random() < zero_probability:
@@ -490,7 +490,7 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     for id in wn.nodes.junction_names:
         node = wn.get_node(id)
         # Don't change the base_value of the nodes
-        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(1, 4, 0.1))
+        node.demand_timeseries_list[0].base_value = node.demand_timeseries_list[0].base_value * np.random.choice(np.arange(0.5, 1.5, 0.1))
         # base_val = node.demand_timeseries_list[0].base_value
         # np.random.choice([0.0000008, 0.0000001, 0.00000002]))
         if continuous:
@@ -501,4 +501,3 @@ def set_attribute_all_nodes_rand(wn, continuous, randomized_demands):
     #     total_demands.append(sum(this_demand))
 
     return None
-

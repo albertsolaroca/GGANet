@@ -172,7 +172,7 @@ class BaselineUnrolling(nn.Module):
 
             pump_settings = x[:, pump_positions]
 
-            input = torch.cat((h0, pump_settings, s, q), dim=1)
+            input = torch.cat((h0, s, q, pump_settings), dim=1)
 
             for j in range(self.num_blocks):
                 h = self.hid_FH[j](input)
