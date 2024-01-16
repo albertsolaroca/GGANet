@@ -110,7 +110,6 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             batch = batch.to(device)
 
             # Model prediction
-
             preds = model.to(device).float()(batch)
 
             # loss function = MSE if alpha=0
@@ -132,8 +131,13 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
             else:
                 preds = model.to(device).float()(x)
             # MSE loss function
-            # TODO Check how error is calculated. Ensure every iteration is penalized.
-            loss = nn.MSELoss()(preds, y)
+            heads_pred = preds[:, :, :37]
+            heads_real = y[:, :, :37]
+            flows_pred = preds[:, :, 37:]
+            flows_real = y[:, :, 37:]
+            loss = nn.MSELoss()(heads_pred, heads_real)
+            loss = loss + alpha * nn.MSELoss()(flows_pred, flows_real)
+
 
         # Normalization to have more representative loss values
         if normalization is not None:
@@ -146,7 +150,7 @@ def train_epoch(model, loader, optimizer, alpha=0, normalization=None, device=No
         loss.backward()
         # Clip to prevent exploding gradients
         # if max_norm is not None:
-        #     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 0.01)
 
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)

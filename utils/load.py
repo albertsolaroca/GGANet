@@ -119,7 +119,8 @@ def create_dataset(database, normalizer=None, output='pressure'):
             for time_step in range(press_shape[0]):
                 # Appending the tanks to the output since their pressures also need to be predicted like any other node
                 nodal_pressures = i.pressure[time_step][[(i.node_type == JUNCTION_TYPE) | (i.node_type == TANK_TYPE)]].reshape(-1, 1)
-                selected_flows = i.flowrate[ix_pump]
+                # selected_flows = i.flowrate[ix_pump]
+                selected_flows = i.flowrate[ix_edge]
                 pump_flows = selected_flows[:, time_step].reshape(-1, 1)
                 output = torch.cat((nodal_pressures, pump_flows), dim=0)
                 graph.y.append(output)
@@ -140,7 +141,7 @@ def create_dataset(database, normalizer=None, output='pressure'):
     return graphs, A12
 
 
-def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', 'coeff_r', 'coeff_n',
+def create_dataset_MLP_from_graphs(graphs, features=['reservoirs', 'tanks', 'diameter', 'coeff_r', 'coeff_n',
                                                      'pump_schedules', 'demand_timeseries',], no_res_out=True):
     # index edges to avoid duplicates: this considers all graphs to be UNDIRECTED!
     ix_edge = graphs[0].edge_index.numpy().T
@@ -156,10 +157,12 @@ def create_dataset_MLP_from_graphs(graphs, features=['base_heads', 'diameter', '
     prev_feature = None
     for ix_feat, feature in enumerate(features):
         for ix_item, item in enumerate(graphs):
-            if feature == 'base_heads':
+            if feature == 'reservoirs':
                 # filter below on ix_res or ix_tank
-                ix_res_or_tank = np.logical_or(ix_res, ix_tank)
-                x_ = item.x[ix_res_or_tank, HEAD_INDEX]
+                # ix_res_or_tank = np.logical_or(ix_res, ix_tank)
+                x_ = item.x[ix_res, HEAD_INDEX]
+            elif feature == 'tanks':
+                x_ = item.x[ix_tank, HEAD_INDEX]
             elif feature == 'diameter':
                 x_ = item.edge_attr[ix_pipe, DIAMETER_INDEX]
             elif feature == 'pump_schedules':

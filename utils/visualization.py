@@ -35,15 +35,15 @@ def plot_res_distr(dataset):
 
 # Create plot for losses
 def plot_loss(train_losses, val_losses=None, name=None, scale='log'):
-    plt.plot(train_losses, 'b-')
+    plt.plot(train_losses, 'b-', label='Training')
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.yscale(scale)
     if val_losses is not None:
         # prepend validation losses with empty value
         # val_losses = [None] + val_losses
-        plt.plot(val_losses, 'r-')
-        plt.legend(['Training', 'Validation'])
+        plt.plot(val_losses, 'r-', label='Validation')
+        plt.legend()
     plt.title('Loss vs. No. of epochs')
 
     if name is not None:

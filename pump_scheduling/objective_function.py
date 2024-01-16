@@ -198,12 +198,13 @@ def run_metamodel(network_name, new_pump_pattern_values):
 
     one_sample = datasets_MLP[0][0]
 
-    if len(new_pump_pattern_values) > 1:
+    if len(new_pump_pattern_values[0]) > 1:
         one_sample = one_sample.repeat(len(new_pump_pattern_values[0]), 1)
     else:
         one_sample = one_sample.unsqueeze(0)
 
-    one_sample[:, indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
+    switch_vals = torch.tensor(new_pump_pattern_values[0])
+    one_sample[:, indices['pump_schedules']] = switch_vals
 
     mm = metamodel.MyMetamodel()
     prediction = mm.predict(one_sample)

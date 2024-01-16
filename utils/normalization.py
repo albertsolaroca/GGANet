@@ -74,7 +74,7 @@ class GraphNormalizer:
                 if element == 'pressure':
                     self.scalers[element] = PowerLogTransformer(log_transform=True, reverse=True)
                 else:
-                    self.scalers[element] = MinMaxScaler()
+                    self.scalers[element] = PowerLogTransformer(log_transform=True, reverse=True)
         else:
             self.scalers[output] = PowerLogTransformer(log_transform=True, reverse=True)
 
@@ -178,12 +178,12 @@ class GraphNormalizer:
         if len(array_only_flows) > 0:
             array_flow = self.inverse_transform_array(array_only_flows, 'pump_flow')
 
-            pred = torch.cat((array_pressures.reshape(-1, (self.junct_and_tanks)),
+            denormalized = torch.cat((array_pressures.reshape(-1, (self.junct_and_tanks)),
                           array_flow.reshape(-1, output_nodes - (self.junct_and_tanks))), axis=1)
         else:
-            pred = array_pressures.reshape(-1, (self.junct_and_tanks))
+            denormalized = array_pressures.reshape(-1, (self.junct_and_tanks))
 
-        return pred
+        return denormalized
 def from_graphs_to_pandas(graphs):
     x = []
     y = []

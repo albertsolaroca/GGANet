@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_sched_flow']
+network: ['FOS_pump_2']
 
 
 # number of training samples to use (if < than total)
@@ -55,13 +55,14 @@ hyperParams:
         UnrollingModel:
             num_layers:
 #                - 1
-#                - 2
-                - 3
+                - 2
+#                - 3
 #                - 4
+#                - 5
         UnrollingModelQ:
             num_layers:
-#                - 1
-                - 2
+                - 1
+#                - 2
 #                - 3
 #                - 4
 adamParams:
@@ -74,8 +75,8 @@ trainParams:
     batch_size: 128
 
 
-#lossParams:
-#        alpha: 0
+lossParams:
+        alpha: 0.8
 
 earlyStopping:
     patience: 20

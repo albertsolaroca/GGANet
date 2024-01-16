@@ -147,7 +147,7 @@ class SchedulePumpBatch(Problem):
 
 def make_problem(input_file='FOS_pump_sched_flow_single_1'):
     wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
-    time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)  + 1# EPANET bug
+    time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep) + 1 # EPANET bug
     time_discrete = 24
     junctions = len(wn.junction_name_list)
     tanks = len(wn.tank_name_list)
@@ -169,8 +169,8 @@ if __name__ == "__main__":
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
 
     # problem = make_problem('FOS_pump_sched_flow')
-    problem = make_problem()
-    # problem = make_problem_mm()
+    # problem = make_problem()
+    problem = make_problem_mm()
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
