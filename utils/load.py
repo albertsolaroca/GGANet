@@ -110,6 +110,7 @@ def create_dataset(database, normalizer=None, output='pressure'):
         ix_edge = graph.edge_index.numpy().T
         ix_edge = (ix_edge[:, 0] < ix_edge[:, 1])
         ix_pump = (graph.edge_attr[:, EDGE_TYPE_INDEX].numpy() == PUMP_TYPE) & ix_edge
+        ix_only_edge = (graph.edge_attr[:, EDGE_TYPE_INDEX].numpy() == PIPE_TYPE) & ix_edge
 
 
         # If the length of the shape of pressure was 2 then it means that the simulation was continuous
@@ -119,10 +120,11 @@ def create_dataset(database, normalizer=None, output='pressure'):
             for time_step in range(press_shape[0]):
                 # Appending the tanks to the output since their pressures also need to be predicted like any other node
                 nodal_pressures = i.pressure[time_step][[(i.node_type == JUNCTION_TYPE) | (i.node_type == TANK_TYPE)]].reshape(-1, 1)
-                selected_flows = i.flowrate[ix_pump]
-                # selected_flows = i.flowrate[ix_edge]
-                pump_flows = selected_flows[:, time_step].reshape(-1, 1)
-                output = torch.cat((nodal_pressures, pump_flows), dim=0)
+                pump_flows = i.flowrate[ix_pump]
+                selected_flows = i.flowrate[ix_only_edge]
+                edge_flows = torch.cat((selected_flows, pump_flows), dim=0)
+                edge_flows = edge_flows[:, time_step].reshape(-1, 1)
+                output = torch.cat((nodal_pressures, edge_flows), dim=0)
                 graph.y.append(output)
 
         else:
