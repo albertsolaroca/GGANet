@@ -364,11 +364,13 @@ class UnrollingModel(nn.Module):
         super(UnrollingModel, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        self.num_heads = junctions + indices['base_heads'].stop
+        self.tanks = indices['tanks'].stop - indices['tanks'].start
+        self.reservoirs = indices['reservoirs'].stop - indices['reservoirs'].start
+        self.num_heads = junctions + self.tanks
         self.demand_nodes = junctions
         self.demand_start = indices['demand_timeseries'].start
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
-        self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
+        self.num_base_heads = self.reservoirs + self.tanks
         self.num_blocks = num_layers
         self.static_feat_end = indices['pump_schedules'].start
         # To calculate amount of pumps we assume that the time period is 24
@@ -399,11 +401,10 @@ class UnrollingModel(nn.Module):
     def forward(self, x, num_steps=1):
 
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        h0, d = (x[:, self.indices['base_heads']].float(),
-                                x[:, self.indices['diameter']].float())
+        reservoirs, tank_levels, d = (x[:, self.indices['reservoirs']].float(), x[:, self.indices['tanks']].float(),
+                                      x[:, self.indices['diameter']].float())
 
-        coeff_r, coeff_n = (x[:, self.indices['coeff_r']].float(),
-                            x[:, self.indices['coeff_n']].float())
+        h0 = torch.cat((reservoirs, tank_levels), dim=1)
 
         res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(d)
 
@@ -424,7 +425,7 @@ class UnrollingModel(nn.Module):
 
             res_s_q = self.hids_q(s)
 
-            for i in range(self.num_blocks - 1):
+            for i in range(self.num_blocks ):
                 D_q = self.hidD_q[i](torch.cat((torch.mul(q, res_S_q), pump_settings), dim=1))
                 D_h = self.hidD_h[i](D_q)
                 hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
