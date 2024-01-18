@@ -527,7 +527,7 @@ class UnrollingModelN(nn.Module):
                 res_q_h = self.resq[i](q)
 
             # Append the prediction for the current time step
-            prediction = torch.cat((h, q[:, -self.pump_number:]), dim=1)
+            prediction = torch.cat((h, q), dim=1)
             # prediction = self.out(q)
             predictions.append(prediction)
 
