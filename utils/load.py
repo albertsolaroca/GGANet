@@ -121,11 +121,11 @@ def create_dataset(database, normalizer=None, output='pressure'):
                 # Appending the tanks to the output since their pressures also need to be predicted like any other node
                 nodal_pressures = i.pressure[time_step][[(i.node_type == JUNCTION_TYPE) | (i.node_type == TANK_TYPE)]].reshape(-1, 1)
                 pump_flows = i.flowrate[ix_pump]
-                pump_flows = pump_flows[:, time_step].reshape(-1, 1)
                 # selected_flows = i.flowrate[ix_only_edge]
                 # edge_flows = torch.cat((selected_flows, pump_flows), dim=0)
                 # edge_flows = edge_flows[:, time_step].reshape(-1, 1)
                 # output = torch.cat((nodal_pressures, edge_flows), dim=0)
+                pump_flows = pump_flows[:, time_step].reshape(-1, 1)
                 output = torch.cat((nodal_pressures, pump_flows), dim=0)
                 graph.y.append(output)
 

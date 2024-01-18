@@ -52,6 +52,13 @@ hyperParams:
             num_layers:
 #                - 1
                 - 2
+        UnrollingModel:
+            num_layers:
+#                - 1
+                - 2
+#                - 3
+#                - 4
+#                - 5
         UnrollingModelN:
             num_layers:
 #                - 1
@@ -71,7 +78,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 500
+    num_epochs: 5
     batch_size: 128
 
 

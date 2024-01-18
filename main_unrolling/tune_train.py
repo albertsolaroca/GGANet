@@ -252,7 +252,7 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
                                                            n_epochs=num_epochs, max_norm=None,
                                                            alpha=alpha, lr_rate=lr_rate, lr_epoch=lr_epoch,
                                                            normalization=None,
-                                                           path=f'{results_folder}/{wdn}/{algorithm}/')
+                                                           path=f'{results_folder}/{wdn}/{algorithm}/', nodes_idx=None)
     loss_plot = plot_loss(tra_losses, val_losses, f'{results_folder}/{wdn}/{algorithm}/loss')
     R2_plot = plot_R2(model, val_loader, f'{results_folder}/{wdn}/{algorithm}/R2', normalization=gn)[1]
 
