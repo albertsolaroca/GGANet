@@ -4,6 +4,6 @@
 dataset_names : ['FOS_pump_3'],
 
 # number of trials
-n_trials : [1],
+n_trials : [10],
 
 }

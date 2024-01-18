@@ -42,6 +42,7 @@ def default_configuration():
     weight_decay = cfg['adamParams']['weight_decay']
     algorithm = cfg['algorithms'][0]
     num_layers = cfg['hyperParams'][algorithm]['num_layers'][0]
+    alpha = cfg['lossParams']['alpha']
     try:
         hid_channels = cfg['hyperParams'][algorithm]['hid_channels'][0]
     except KeyError:
@@ -49,7 +50,8 @@ def default_configuration():
 
     default_config = SimpleNamespace(network=network, samples=samples, batch_size=batch_size, num_epochs=num_epochs, alpha=alpha,
                                      patience=patience, divisor=divisor, epoch_frequency=epoch_frequency, algorithm=algorithm,
-                                     num_layers=num_layers, hid_channels=hid_channels, learning_rate=learning_rate, weight_decay=weight_decay, clipper=100)
+                                     num_layers=num_layers, hid_channels=hid_channels, learning_rate=learning_rate, weight_decay=weight_decay,
+                                     clipper=100)
 
     return default_config
 
@@ -60,7 +62,7 @@ def make_config_dict(configuration):
     config['samples'] = configuration.samples
     config['batch_size'] = configuration.batch_size
     config['num_epochs'] = configuration.num_epochs
-    config['alpha'] = 0
+    config['alpha'] = configuration.alpha
     config['patience'] = configuration.patience
     config['divisor'] = configuration.divisor
     config['epoch_frequency'] = configuration.epoch_frequency
@@ -243,7 +245,7 @@ def train(configuration, datasets_MLP, gn, indices, junctions, tanks, output_nod
     #     max_norm = configuration.clipper
     # else:
     #     max_norm = None
-    alpha = 0
+    alpha = configuration.alpha
 
     model, tra_losses, val_losses, elapsed_time = training(model, optimizer, tra_loader, val_loader,
                                                            patience=patience, report_freq=0,

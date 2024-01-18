@@ -72,7 +72,8 @@ class MLPDynamicOnly(nn.Module):
 
         return predictions
 
-
+# MLP model including static data. The static data is concatenated to the input of the MLP
+# It was found that performance does not improve compares to the MLPDynamicOnly model
 class MLPStatic(nn.Module):
     def __init__(self, num_outputs, hid_channels, indices, junctions, num_layers=6):
         super(MLPStatic, self).__init__()
@@ -123,16 +124,20 @@ class MLPStatic(nn.Module):
         return predictions
 
 
+# Standard BaselineUnrolling model. The adaptations made along with the .out layer lead it to being closer to an
+# MLP rather than a traditional unrolling model
 class BaselineUnrolling(nn.Module):
     def __init__(self, num_outputs, indices, junctions, num_layers=6, hid_channels=None):
         super(BaselineUnrolling, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        self.num_heads = junctions + indices['base_heads'].stop
+        self.num_tanks = indices['tanks'].stop - indices['tanks'].start
+        self.num_heads = junctions + self.num_tanks
+        self.num_reservoirs = indices['reservoirs'].stop - indices['reservoirs'].start
         self.demand_nodes = junctions
         self.demand_start = indices['demand_timeseries'].start
         self.num_flows = indices['diameter'].stop - indices['diameter'].start
-        self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
+        self.num_base_heads = self.num_reservoirs + self.num_tanks
         self.num_blocks = num_layers
         self.n = 1.852
 
@@ -156,7 +161,7 @@ class BaselineUnrolling(nn.Module):
 
         d = x[:, self.indices['diameter']].float().view(-1, self.num_flows, 1)
 
-        h0 = x[:, self.indices['base_heads']]
+        h0 = torch.cat((x[:, self.indices['reservoirs']], x[:, self.indices['tanks']]), dim=1)
 
         q = torch.mul(math.pi / 4, torch.pow(d, 2)).view(-1, self.num_flows).float()
 
@@ -180,6 +185,84 @@ class BaselineUnrolling(nn.Module):
 
             # Append the prediction for the current time step
             prediction = self.out(h)
+            predictions.append(prediction)
+
+        if num_steps == 1:
+            return predictions[0]
+        # Convert the list of predictions to a tensor
+        predictions = torch.stack(predictions, dim=1)
+
+        return predictions
+
+# An attempt to adapt the baseline unrolling model to predicting flows. Unsuccessful so far
+class BaselineUnrollingFlows(nn.Module):
+    def __init__(self, num_outputs, indices, junctions, num_layers=6, hid_channels=None):
+        super(BaselineUnrollingFlows, self).__init__()
+        torch.manual_seed(42)
+        self.indices = indices
+        self.num_tanks = indices['tanks'].stop - indices['tanks'].start
+        self.num_reservoirs = indices['reservoirs'].stop - indices['reservoirs'].start
+        self.num_heads = junctions + self.num_tanks
+        self.demand_nodes = junctions
+        self.demand_start = indices['demand_timeseries'].start
+        self.num_pipes = indices['diameter'].stop - indices['diameter'].start
+        self.num_base_heads = self.num_reservoirs + self.num_tanks
+        self.num_blocks = num_layers
+        self.n = 1.852
+
+        self.static_feat_end = indices['diameter'].stop
+
+        # To calculate amount of pumps we assume that the time period is 24
+        self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
+        self.num_flows = self.num_pipes + self.pump_number
+
+        self.hid_HF = nn.ModuleList()
+        self.hid_FH = nn.ModuleList()
+
+        for i in range(self.num_blocks):
+            self.hid_FH.append(Sequential(
+                Linear(self.num_base_heads + self.demand_nodes + self.num_flows, self.num_heads),
+                nn.ReLU()))
+            self.hid_HF.append(Sequential(Linear(self.num_heads, self.num_flows), nn.ReLU()))
+
+        self.out = Linear(self.num_heads, num_outputs)
+
+    def forward(self, x, num_steps=1):
+
+        d = x[:, self.indices['diameter']].float().view(-1, self.num_pipes, 1)
+
+        h0 = torch.cat((x[:, self.indices['reservoirs']], x[:, self.indices['tanks']]), dim=1)
+        # h0  = x[:, self.indices['reservoirs']]
+
+        q_init = torch.mul(math.pi / 4, torch.pow(d, 2)).view(-1, self.num_pipes).float()
+
+        predictions = []
+        for step in range(num_steps):
+            demand_index_corrector = self.demand_nodes * step
+            timeseries_start, timeseries_end = demand_index_corrector + self.demand_start, (
+                    self.demand_start + demand_index_corrector + self.demand_nodes)
+            s = x[:, timeseries_start:timeseries_end]
+
+            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
+                              list(range(self.pump_number))]
+
+            pump_settings = x[:, pump_positions]
+
+            if step == 0:
+                q = torch.cat((q_init, pump_settings), dim=1)
+            else:
+                q_copy = q.clone()
+                q_copy[:, -self.pump_number:] = pump_settings
+                q = q_copy
+
+            input = torch.cat((h0, s, q), dim=1)
+
+            for j in range(self.num_blocks):
+                h = self.hid_FH[j](input)
+                q = q - self.hid_HF[j](h)
+
+            # Append the prediction for the current time step
+            prediction = torch.cat((h, q), dim=1)
             predictions.append(prediction)
 
         if num_steps == 1:
@@ -443,7 +526,7 @@ class UnrollingModelN(nn.Module):
                 res_q_h = self.resq[i](q)
 
             # Append the prediction for the current time step
-            prediction = torch.cat((h, q), dim=1)
+            prediction = torch.cat((h, q[:, -self.pump_number:]), dim=1)
             # prediction = self.out(q)
             predictions.append(prediction)
 

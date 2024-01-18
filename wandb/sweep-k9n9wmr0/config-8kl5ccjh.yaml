@@ -1,0 +1,28 @@
+wandb_version: 1
+
+algorithm:
+  value: UnrollingModelN
+alpha:
+  value: 1
+batch_size:
+  value: 128
+divisor:
+  value: 10
+epoch_frequency:
+  value: 50
+hid_channels:
+  value: 32
+learning_rate:
+  value: 0.001
+network:
+  value: FOS_pump_2
+num_epochs:
+  value: 500
+num_layers:
+  value: 2
+patience:
+  value: 10
+samples:
+  value: 1000
+weight_decay:
+  value: 0.0001

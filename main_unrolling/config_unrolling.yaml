@@ -23,8 +23,8 @@ algorithms:
 #    - MLPDynamicOnly
 #    - MLPStatic
 #    - BaselineUnrolling
-#    - UnrollingModelQ
-    - UnrollingModel
+    - UnrollingModelN
+#    - UnrollingModel
 #     - UnrollingModelSimple
 
 # hyper params for each model
@@ -52,7 +52,7 @@ hyperParams:
             num_layers:
 #                - 1
                 - 2
-        UnrollingModel:
+        UnrollingModelN:
             num_layers:
 #                - 1
                 - 2
