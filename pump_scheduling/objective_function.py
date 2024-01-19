@@ -198,7 +198,7 @@ def run_metamodel(network_name, new_pump_pattern_values):
 
     one_sample = datasets_MLP[0][0]
 
-    if len(new_pump_pattern_values[0]) > 24:
+    if len(new_pump_pattern_values[0]) > 1 and len(new_pump_pattern_values[0]) != 24:
         one_sample = one_sample.repeat(len(new_pump_pattern_values[0]), 1)
     else:
         one_sample = one_sample.unsqueeze(0)

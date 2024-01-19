@@ -121,7 +121,7 @@ class SchedulePumpBatch(Problem):
 
     def __init__(self, network_file, n_var=24, n_ieq_constr=36, switch_penalty=0):
         super().__init__(n_var=n_var,
-                         n_obj=2,
+                         n_obj=3,
                          n_ieq_constr=n_ieq_constr,
                          xl=0,
                          xu=1,
@@ -136,7 +136,7 @@ class SchedulePumpBatch(Problem):
         evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
         switches = count_switches_2d(x) * 1
         # The objective of the function. Total energy to minimize
-        out["F"] = [evaluation[0][0], evaluation[0][1] + self.switch_penalty * count_switches_2d(x)]
+        out["F"] = [evaluation[0][0], evaluation[0][1], self.switch_penalty * count_switches_2d(x)]
         achtien_x = x[17]
         achtien_y = evaluation[0][0][17]
         achtien = evaluation[0][1][17]
@@ -145,23 +145,23 @@ class SchedulePumpBatch(Problem):
         out["G"] = evaluation[1]
 
 
-def make_problem(input_file='FOS_pump_sched_flow_single_1'):
+def make_problem(input_file='FOS_pump_sched_flow_single_1', switch_penalty=0):
     wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
-    time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)  + 1# EPANET bug
+    # time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)  + 1 # EPANET bug
     time_discrete = 24
     junctions = len(wn.junction_name_list)
     tanks = len(wn.tank_name_list)
 
-    return SchedulePump(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks)
+    return SchedulePump(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
 
 
-def make_problem_mm(input_file='FOS_pump_sched_flow_single'):
+def make_problem_mm(input_file='FOS_pump_sched_flow_single', switch_penalty=0):
     wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
     time_discrete = int(wn.options.time.duration / wn.options.time.pattern_timestep)
     junctions = len(wn.junction_name_list)
     tanks = len(wn.tank_name_list)
 
-    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks)
+    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
 
 
 if __name__ == "__main__":
@@ -169,8 +169,8 @@ if __name__ == "__main__":
     print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
 
     # problem = make_problem('FOS_pump_sched_flow')
-    # problem = make_problem()
-    problem = make_problem_mm()
+    # problem = make_problem(switch_penalty=1)
+    problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
@@ -178,7 +178,7 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 5)
+    termination = get_termination("n_gen", 50)
 
     res = minimize(problem,
                    algorithm,
