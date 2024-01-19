@@ -477,7 +477,7 @@ class UnrollingModelN(nn.Module):
             self.hid_hf.append(Sequential(Linear(self.num_heads, self.num_flows), nn.PReLU()))
             self.hid_fh.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
             self.resq.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
-            self.hidD_q.append(Sequential(Linear(self.num_flows + self.pump_number, self.num_flows)))
+            self.hidD_q.append(Sequential(Linear(self.num_flows, self.num_flows)))
             self.hidD_h.append(Sequential(Linear(self.num_flows, self.num_heads), nn.ReLU()))
 
     def forward(self, x, num_steps=1):
@@ -518,7 +518,7 @@ class UnrollingModelN(nn.Module):
                 q = q_copy
 
             for i in range(self.num_blocks):
-                D_q = self.hidD_q[i](torch.cat((torch.mul(q, res_S_q), pump_settings), dim=1))
+                D_q = self.hidD_q[i](torch.mul(q, res_S_q))
                 D_h = self.hidD_h[i](D_q)
                 hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
                 h = self.hid_fh[i](hid_x)
