@@ -165,12 +165,12 @@ def make_problem_mm(input_file='FOS_pump_sched_flow_single'):
 
 
 if __name__ == "__main__":
-    # print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1] * 24]))
-    # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
+    print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1] * 24]))
+    print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
 
     # problem = make_problem('FOS_pump_sched_flow')
-    problem = make_problem()
-    # problem = make_problem_mm()
+    # problem = make_problem()
+    problem = make_problem_mm()
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
@@ -178,7 +178,7 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 20)
+    termination = get_termination("n_gen", 5)
 
     res = minimize(problem,
                    algorithm,
