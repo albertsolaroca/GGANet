@@ -4,7 +4,7 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
 from main_unrolling.training.models import Dummy
 from training.test import testing_plain
-from utils import load_raw_dataset
+from utils.load import load_raw_dataset
 from tune_train import prepare_training, default_configuration
 
 def metrics(real, pred, dummy):
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
-    model_path = 'experiments/unrolling_WDN0120/FOS_pump_sched_flow/UnrollingModel/model.pickle'
+    model_path = 'experiments/unrolling_WDN0027/FOS_pump_2/UnrollingModel/model.pickle'
     with open(model_path, 'rb') as handle:
         model = torch.load(handle)
         model.eval()

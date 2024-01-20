@@ -165,38 +165,41 @@ def make_problem_mm(input_file='FOS_pump_sched_flow_single', switch_penalty=0):
 
 
 if __name__ == "__main__":
-    print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1] * 24]))
-    print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1] * 24]))
+    print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]]))
+    # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]]))
 
-    # problem = make_problem('FOS_pump_sched_flow')
+    print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
+    # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
+
+    # # problem = make_problem('FOS_pump_sched_flow')
     # problem = make_problem(switch_penalty=1)
-    problem = make_problem_mm(switch_penalty=1)
-
-    algorithm = NSGA2(pop_size=100,
-                      sampling=BinaryRandomSampling(),
-                      # crossover=TwoPointCrossover(),
-                      mutation=BitflipMutation(),
-                      eliminate_duplicates=True)
-
-    termination = get_termination("n_gen", 50)
-
-    res = minimize(problem,
-                   algorithm,
-                   termination,
-                   seed=1,
-                   verbose=True, )
-
-    pareto_front = res.F
-    sorted_indices = pareto_front[:, 0].argsort()
-    sorted_solutions = res.X[sorted_indices]
-    print(len(sorted_solutions))
-
-    print("Best solution found: %s" % res.X.astype(int))
-
-    evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)])
-    evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', res.X.astype(int))
-
-    print("Evaluation of the best solution by mm: %s" % evaluation_mm[0])
-    print("Evaluation of the best solution by WNTR: %s" % evaluation[0])
-    print("Function value: %s" % res.F)
-    print("Constraint violation: %s" % res.CV)
+    # # problem = make_problem_mm(switch_penalty=1)
+    #
+    # algorithm = NSGA2(pop_size=100,
+    #                   sampling=BinaryRandomSampling(),
+    #                   # crossover=TwoPointCrossover(),
+    #                   mutation=BitflipMutation(),
+    #                   eliminate_duplicates=True)
+    #
+    # termination = get_termination("n_gen", 30)
+    #
+    # res = minimize(problem,
+    #                algorithm,
+    #                termination,
+    #                seed=1,
+    #                verbose=True, )
+    #
+    # pareto_front = res.F
+    # sorted_indices = pareto_front[:, 0].argsort()
+    # sorted_solutions = res.X[sorted_indices]
+    # print(len(sorted_solutions))
+    #
+    # print("Best solution found: %s" % res.X.astype(int))
+    #
+    # evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)])
+    # evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', res.X.astype(int))
+    #
+    # print("Evaluation of the best solution by mm: %s" % evaluation_mm[0])
+    # print("Evaluation of the best solution by WNTR: %s" % evaluation[0])
+    # print("Function value: %s" % res.F)
+    # print("Constraint violation: %s" % res.CV)
