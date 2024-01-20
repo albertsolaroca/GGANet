@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import torch
+import time
 
 from get_set import *
 from main_unrolling.tune_train import prepare_scheduling
@@ -183,7 +184,10 @@ def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True
     pump_pattern_ids = ['pump_' + item for item in wn.pump_name_list]
     change_pumping_pattern(wn, pump_pattern_ids, new_pattern_values)
 
+    time_start = time.time()
     result = simulate_network(wn)
+    time_end = time.time()
+    print("Time for simulation of WNTR:", time_end - time_start)
 
     output = {'wn': wn, 'result': result}
 
@@ -206,7 +210,10 @@ def run_metamodel(network_name, new_pump_pattern_values):
     one_sample[:, indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
 
     mm = metamodel.MyMetamodel()
+    time_start = time.time()
     prediction = mm.predict(one_sample)
+    time_end = time.time()
+    print("Time for prediction of mm:", time_end - time_start)
     pred_formatted = prediction.squeeze().reshape(-1, 1)
 
     pred = gn.denormalize_multiple(pred_formatted, output_nodes)
