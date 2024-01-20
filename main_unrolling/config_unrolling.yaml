@@ -69,4 +69,4 @@ trainParams:
 earlyStopping:
     patience: 20
     divisor: 2
-    epoch_frequency: 40
+    epoch_frequency: 30
