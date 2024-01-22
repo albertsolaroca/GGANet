@@ -425,7 +425,7 @@ class UnrollingModel(nn.Module):
 
             res_s_q = self.hids_q(s)
 
-            for i in range(self.num_blocks ):
+            for i in range(self.num_blocks):
                 D_q = self.hidD_q[i](torch.cat((torch.mul(q, res_S_q), pump_settings), dim=1))
                 D_h = self.hidD_h[i](D_q)
                 hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
@@ -488,9 +488,6 @@ class UnrollingModelN(nn.Module):
 
         h0 = torch.cat((reservoirs, tank_levels), dim=1)
 
-        coeff_r, coeff_n = (x[:, self.indices['coeff_r']].float(),
-                            x[:, self.indices['coeff_n']].float())
-
         res_h0_q, res_h0_h, res_S_q = self.hidh0_q(h0), self.hidh0_h(h0), self.hid_S(d)
 
         q_init = torch.mul(math.pi / 4, torch.pow(d, 2)).float()  # This is the educated "guess" of the flow
@@ -502,7 +499,8 @@ class UnrollingModelN(nn.Module):
                     self.demand_start + demand_index_corrector + self.demand_nodes)
             s = x[:, timeseries_start:timeseries_end]
 
-            pump_positions = [self.static_feat_end + (num_steps * pump) + step for pump in
+
+            pump_positions = [self.indices['pump_schedules'].start + (num_steps * pump) + step for pump in
                               list(range(self.pump_number))]
 
             pump_settings = x[:, pump_positions]
