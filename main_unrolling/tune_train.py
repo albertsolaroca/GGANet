@@ -150,45 +150,57 @@ def prepare_training(network, samples):
 def prepare_scheduling(network):
     wdn = network
 
-    data_folder = '../data_generation/datasets'
-    # retrieve wntr data
-    tst_database = load_raw_dataset_test(wdn, data_folder)
-    # reduce data since we only need one sample
-    tst_database = tst_database[:1]
+    if os.path.exists(wdn + '_prep_data.pkl'):
+        with open(wdn + '_prep_data.pkl', 'rb') as file:
+            prepared_data = pickle.load(file)
+        tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, names = prepared_data
 
-    tst_dataset, A12_bar = create_dataset(tst_database)
+    else:
+        data_folder = '../data_generation/datasets'
+        # retrieve wntr data
+        tst_database = load_raw_dataset_test(wdn, data_folder)
+        # reduce data since we only need one sample
+        tst_database = tst_database[:1]
 
-    junctions = (tst_database[0].node_type == JUNCTION_TYPE).numpy().sum()
-    tanks = (tst_database[0].node_type == TANK_TYPE).numpy().sum()
-    output_nodes = len(tst_dataset[0].y[0])  # remove reservoirs
+        tst_dataset, A12_bar = create_dataset(tst_database)
 
-    node_heads = tst_dataset[0].node_stores[0]['x'].numpy()[:, 0]
-    # get GRAPH datasets
-    # later on we should change this and use normal scalers from scikit
-    gn = GraphNormalizer(junctions + tanks, output=['pressure', 'pump_flow'])
-    gn = gn.fit(tst_dataset)
+        junctions = (tst_database[0].node_type == JUNCTION_TYPE).numpy().sum()
+        tanks = (tst_database[0].node_type == TANK_TYPE).numpy().sum()
+        output_nodes = len(tst_dataset[0].y[0])  # remove reservoirs
 
-    tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
-    # number of nodes
-    node_size, edge_size = tst_dataset[0].x.size(-1), tst_dataset[0].edge_attr.size(-1)
+        node_heads = tst_dataset[0].node_stores[0]['x'].numpy()[:, 0]
+        # get GRAPH datasets
+        # later on we should change this and use normal scalers from scikit
+        gn = GraphNormalizer(junctions + tanks, output=['pressure', 'pump_flow'])
+        gn = gn.fit(tst_dataset)
 
-    # dataloader
-    # transform dataset for MLP
-    # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
-    # A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
-    tst_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tst_dataset)
+        tst_dataset, _ = create_dataset(tst_database, normalizer=gn)
+        # number of nodes
+        node_size, edge_size = tst_dataset[0].x.size(-1), tst_dataset[0].edge_attr.size(-1)
 
-    node_names = tst_database[0].node_stores[0]["ID"]
-    edge_names = tst_database[0].edge_stores[0]["edge_ID"]
-    node_types = tst_database[0].node_stores[0]["type"]
-    edge_types = tst_database[0].edge_stores[0]["edge_type"]
+        # dataloader
+        # transform dataset for MLP
+        # We begin with the MLP versions, when I want to add GNNs, check Riccardo's code
+        # A10, A12 = create_incidence_matrices(tra_dataset, A12_bar)
+        tst_dataset_MLP, num_inputs, indices = create_dataset_MLP_from_graphs(tst_dataset)
 
-    names = {}
-    names["node_ids"] = node_names
-    names["node_heads"] = dict(zip(node_names, node_heads))
-    names["node_types"] = node_types
-    names["edge_ids"] = edge_names
-    names["edge_types"] = edge_types
+        node_names = tst_database[0].node_stores[0]["ID"]
+        edge_names = tst_database[0].edge_stores[0]["edge_ID"]
+        node_types = tst_database[0].node_stores[0]["type"]
+        edge_types = tst_database[0].edge_stores[0]["edge_type"]
+
+        names = {}
+        names["node_ids"] = node_names
+        names["node_heads"] = dict(zip(node_names, node_heads))
+        names["node_types"] = node_types
+        names["edge_ids"] = edge_names
+        names["edge_types"] = edge_types
+
+        prepared_data = (tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, names)
+
+        # Save the prepared data to a file
+        with open(wdn + '_prep_data.pkl', 'wb') as file:
+            pickle.dump(prepared_data, file)
 
     return tst_dataset_MLP, gn, indices, junctions, tanks, output_nodes, names
 

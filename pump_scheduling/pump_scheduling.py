@@ -2,6 +2,7 @@
 The following example demonstrates how to import WNTR, generate a water network
 model from an INP file, simulate hydraulics, and plot simulation results on the network.
 """
+import pandas as pd
 import wntr
 import time
 
@@ -19,6 +20,8 @@ from pymoo.operators.crossover.pntx import TwoPointCrossover
 from pymoo.algorithms.moo.nsga2 import NSGA2
 
 from pymoo.operators.sampling.rnd import BinaryRandomSampling
+
+from get_set import make_network
 
 
 def optimize_pump_schedule_WNTR(network_file, new_pump_pattern_values):
@@ -60,11 +63,33 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
     total_pressure_surplus = []
 
 
+    wn = make_network('../data_generation/networks/' + network_file + '.inp')
+    # get wn patterns
+    pats = wn.patterns
 
+    wn.add_pattern('EnergyPrice', electricity_price_values)
+    wn.options.energy.global_pattern = 'EnergyPrice'
+
+    pump_id_list = wn.pump_name_list
+    node_ids = np.array(names['node_ids'], copy=False)
+    edge_ids = np.array(names['edge_ids'], copy=False)
+    edge_types = np.array(names['edge_types'], copy=False)
+    node_types = np.array(names['node_types'], copy=False)
+
+    jt_filter = np.where((node_types == 'Junction') | (node_types == 'Tank'))[0]
+    jt_ids = node_ids[jt_filter]
+
+    pump_filter = np.where(edge_types == 'Pump')[0]
+    pump_ids = set(edge_ids[pump_filter])
+
+    pump_flowrate_raw = output[:, node_idx:] / 1000
+    pressures_raw = output[:, :node_idx]
+
+
+    # Loop through all outputted examples
     for i in range(0, len(output), 24):
         energy, cost, nodal_pressures = (
-            calculate_objective_function_mm(network_file, electricity_price_values, output[i:(24 + i)], node_idx,
-                                            names))
+            calculate_objective_function_mm(wn, output[i:(24 + i)], names, node_idx, jt_ids, pump_ids, pump_id_list, pressures_raw[i:(24 + i)], pump_flowrate_raw[i:(24 + i)]))
 
         minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
 
@@ -133,8 +158,10 @@ class SchedulePumpBatch(Problem):
     def _evaluate(self, x, out, *args, **kwargs):
         # Minimization function
         # evaluation = optimize_pump_schedule_WNTR(self.network_file, [x])
+        time_start = time.time()
         evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
-        switches = count_switches_2d(x) * 1
+        time_end = time.time()
+        # print("Time taken for evaluation: ", time_end - time_start)
         # The objective of the function. Total energy to minimize
         out["F"] = [evaluation[0][0], evaluation[0][1], self.switch_penalty * count_switches_2d(x)]
 
@@ -160,8 +187,12 @@ def make_problem_mm(input_file='FOS_pump_sched_flow_single', switch_penalty=0):
 
     return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
 
+from mpl_toolkits import mplot3d
+import matplotlib.pyplot as plt
+plt.style.use('seaborn-poster')
 
 if __name__ == "__main__":
+
     # print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]]))
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]]))
 
@@ -172,13 +203,13 @@ if __name__ == "__main__":
     # problem = make_problem(switch_penalty=1)
     problem = make_problem_mm(switch_penalty=1)
 
-    algorithm = NSGA2(pop_size=1,
+    algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
                       # crossover=TwoPointCrossover(),
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 1)
+    termination = get_termination("n_gen", 30)
 
     res = minimize(problem,
                    algorithm,
@@ -189,14 +220,26 @@ if __name__ == "__main__":
     pareto_front = res.F
     sorted_indices = pareto_front[:, 0].argsort()
     sorted_solutions = res.X[sorted_indices]
-    print(len(sorted_solutions))
+    print('Found', len(sorted_solutions), 'solutions')
 
     print("Best solution found: %s" % res.X.astype(int))
 
-    evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)])
-    evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', res.X.astype(int))
+    if res.X.astype(int).shape[0] > 1:
+        for i in range(len(res.X.astype(int))):
+            resuts = res.X.astype(int)[i]
+            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)[i]])
+            evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [res.X.astype(int)[i]])
+            print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0])
+            print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0])
+            print("Function value: %s" % res.F[i])
+            print("Constraint violation: %s" % res.CV[i])
 
-    print("Evaluation of the best solution by mm: %s" % evaluation_mm[0])
-    print("Evaluation of the best solution by WNTR: %s" % evaluation[0])
-    print("Function value: %s" % res.F)
-    print("Constraint violation: %s" % res.CV)
+    # evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)])
+    # evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', res.X.astype(int))
+
+    # print("Evaluation of the best solution by mm: %s" % evaluation_mm[0])
+    # print("Evaluation of the best solution by WNTR: %s" % evaluation[0])
+    # print("Function value: %s" % res.F)
+    # print("Constraint violation: %s" % res.CV)
+
+
