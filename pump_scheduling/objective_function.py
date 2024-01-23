@@ -177,11 +177,9 @@ def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True
 
 def run_metamodel(network_name, new_pump_pattern_values):
     # wn = make_network(file)
-    time_start = time.time()
     datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_scheduling(
         network_name)
 
-    time_1 = time.time()
 
     one_sample = datasets_MLP[0][0]
 
@@ -192,17 +190,10 @@ def run_metamodel(network_name, new_pump_pattern_values):
 
     one_sample[:, indices['pump_schedules']] = torch.tensor(new_pump_pattern_values[0])
 
-    time_2 = time.time()
     mm = metamodel.MyMetamodel()
-    time_3 = time.time()
     prediction = mm.predict(one_sample)
-    time_4 = time.time()
     pred_formatted = prediction.squeeze().reshape(-1, 1)
 
     pred = gn.denormalize_multiple(pred_formatted, output_nodes)
-
-    time_5 = time.time()
-
-    # print("Times:", time_5 - time_4, time_4 - time_3, time_3 - time_2, time_2 - time_1, time_1 - time_start)
 
     return pred, junctions + tanks, output_nodes, names
