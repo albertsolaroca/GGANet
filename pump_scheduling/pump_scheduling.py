@@ -2,9 +2,13 @@
 The following example demonstrates how to import WNTR, generate a water network
 model from an INP file, simulate hydraulics, and plot simulation results on the network.
 """
+from concurrent.futures import ProcessPoolExecutor
+
 import pandas as pd
 import wntr
+import os
 import time
+import itertools
 
 from pymoo.algorithms.moo.nsga3 import NSGA3
 
@@ -96,18 +100,101 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
 
     # Loop through all outputted examples
     for i in range(0, len(output), 24):
-        energy, cost, nodal_pressures = (
-            calculate_objective_function_mm(wn, output[i:(24 + i)], names, node_idx, jt_ids, pump_ids, pump_id_list, pump_flowrates[i:(24 + i)], total_heads[i:(24 + i)]))
+        energy, cost, pressure_surplus = (
+            calculate_objective_function_mm(wn, output[i:(24 + i)], node_idx, pump_id_list, pump_flowrates[i:(24 + i)], total_heads[i:(24 + i)]))
 
-        minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
-
-        pressure_surplus = [-nodal_pressures[j] + minimum_pressure_required[j] for j in range(len(nodal_pressures))]
 
         total_energy.append(energy)
         total_cost.append(cost)
         total_pressure_surplus.append(pressure_surplus)
 
     return [total_energy, total_cost], total_pressure_surplus
+
+def optimize_pump_schedule_metamodel_parallel(network_file, new_pump_pattern_values):
+    # Pre-set electricity pattern values to calculate cost
+    electricity_price_values = [0.065, 0.06, 0.045, 0.047, 0.049, 0.07, 0.085, 0.09, 0.14, 0.19, 0.1, 0.11, 0.125,
+                                0.095, 0.085, 0.08, 0.087, 0.087, 0.09, 0.09, 0.083, 0.18, 0.06, 0.04]
+    # in $/kWh
+    # https://www.researchgate.net/publication/238041923_A_mixed_integer_linear_formulation_for_microgrid_economic_scheduling/figures
+
+    # Run the model with the pump pattern values specified
+    output, node_idx, pumps_idx, names = run_metamodel(network_file, new_pump_pattern_values)
+    # Calculate the objective function, which is the total energy, cost and minimum pressure per node during the run
+    total_energy = []
+    total_cost = []
+    total_pressure_surplus = []
+
+
+    wn = make_network('../data_generation/networks/' + network_file + '.inp')
+    # get wn patterns
+    pats = wn.patterns
+
+    wn.add_pattern('EnergyPrice', electricity_price_values)
+    wn.options.energy.global_pattern = 'EnergyPrice'
+
+    pump_id_list = wn.pump_name_list
+    node_ids = np.array(names['node_ids'], copy=False)
+    edge_ids = np.array(names['edge_ids'], copy=False)
+    edge_types = np.array(names['edge_types'], copy=False)
+    node_types = np.array(names['node_types'], copy=False)
+
+    jt_filter = np.where((node_types == 'Junction') | (node_types == 'Tank'))[0]
+    jt_ids = node_ids[jt_filter]
+
+    pump_filter = np.where(edge_types == 'Pump')[0]
+    pump_ids = set(edge_ids[pump_filter])
+
+    pump_flowrate_raw = output[:, node_idx:] / 1000 # L/s to m3/s
+    pressures_raw = output[:, :node_idx]
+
+    # Heads
+    pressures = pd.DataFrame(data=pressures_raw, index=range(0, len(output)), columns=jt_ids)
+    heads = pd.DataFrame(data=names['node_heads'], index=range(0, len(output)))
+
+    total_heads = heads.add(pressures, fill_value=0)
+
+    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, columns=pump_ids)
+    pump_flowrates = pump_flowrates.clip(lower=0)
+
+    # Determine the number of splits based on CPU count
+    num_cores = os.cpu_count()
+    chunk_size = len(output) // num_cores
+
+    # Splitting DataFrame into chunks
+    chunks_pump = [pump_flowrates[i:i + chunk_size] for i in range(0, pump_flowrates.shape[0], chunk_size)]
+    # Splitting DataFrame into chunks
+    chunks_head = [total_heads[i:i + chunk_size] for i in range(0, total_heads.shape[0], chunk_size)]
+    # Splitting output into chunks
+    chunks_output = [output[i:i + chunk_size] for i in range(0, output.shape[0], chunk_size)]
+
+    with ProcessPoolExecutor() as executor:
+        results = list(executor.map(process_chunk, chunks_output, chunks_pump, chunks_head, [node_idx] * chunk_size, [pump_id_list] * chunk_size, [wn] * chunk_size))
+
+    # Assuming results is a list of tuples, each containing three lists
+    # results = [(list1a, list1b, list1c), (list2a, list2b, list2c), ...]
+
+    # Extract and concatenate lists from each tuple
+    total_energy = list(itertools.chain(*[result[0] for result in results]))
+    total_cost = list(itertools.chain(*[result[1] for result in results]))
+    total_pressure_surplus = list(itertools.chain(*[result[2] for result in results]))
+
+
+    return [total_energy, total_cost], total_pressure_surplus
+
+def process_chunk(output, pump_flowrates, total_heads, node_idx, pump_id_list, wn):
+
+    chunk_energy = []
+    chunk_cost = []
+    chunk_pressure_surplus = []
+
+    for i in range(0, len(output), 24):
+        energy, cost, pressure_surplus = (
+            calculate_objective_function_mm(wn, output[i:(24 + i)], node_idx, pump_id_list, pump_flowrates[i:(24 + i)], total_heads[i:(24 + i)]))
+        chunk_energy.append(energy)
+        chunk_cost.append(cost)
+        chunk_pressure_surplus.append(pressure_surplus)
+
+    return chunk_energy, chunk_cost, chunk_pressure_surplus
 
 def check_greater_than_zero(lst):
     return 1 if any(x > 0 for x in lst) else -1
@@ -173,6 +260,27 @@ class SchedulePumpBatch(Problem):
         # The constraints of the function, as in pressure violations per node
         out["G"] = evaluation[1]
 
+class SchedulePumpParallel(Problem):
+
+    def __init__(self, network_file, n_var=24, n_ieq_constr=1, switch_penalty=0):
+        super().__init__(n_var=n_var,
+                         n_obj=3,
+                         n_ieq_constr=n_ieq_constr,
+                         xl=0,
+                         xu=1,
+                         vtype=bool)
+
+        self.network_file = network_file
+        self.switch_penalty = switch_penalty
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        # Minimization function
+        evaluation = optimize_pump_schedule_metamodel_parallel(self.network_file, [x])
+        # The objective of the function. Total energy to minimize
+        out["F"] = [evaluation[0][0], evaluation[0][1], self.switch_penalty * count_switches_2d(x)]
+
+        # The constraints of the function, as in pressure violations per node
+        out["G"] = evaluation[1]
 
 def make_problem(input_file='FOS_pump_sched_flow_single_1', switch_penalty=0):
     wn = wntr.network.WaterNetworkModel('../data_generation/networks/' + input_file + '.inp')
@@ -190,7 +298,7 @@ def make_problem_mm(input_file='FOS_pump_sched_flow_single', switch_penalty=0):
     junctions = len(wn.junction_name_list)
     tanks = len(wn.tank_name_list)
 
-    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
+    return SchedulePumpParallel(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
 
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
@@ -204,18 +312,18 @@ if __name__ == "__main__":
     # print(optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
 
-    # problem = make_problem('FOS_pump_sched_flow')
+    # problem = make_problem()
     # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
     # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
     problem = make_problem_mm(switch_penalty=1)
 
-    algorithm = NSGA2(pop_size=100,
+    algorithm = NSGA2(pop_size=10000,
                       sampling=BinaryRandomSampling(),
                       # crossover=TwoPointCrossover(),
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 10)
+    termination = get_termination("n_gen", 1)
 
     res = minimize(problem,
                    algorithm,

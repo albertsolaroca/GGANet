@@ -43,6 +43,8 @@ def energy_cost(energy, wn):
 # Returns the total energy consumption and cost for a given pump
 def total_energy_and_cost(wn, pump_flowrate, head, pump_id_list, timestep=3600):
     energy = energy_consumption(wn, pump_flowrate, head)
+    if len(energy) != 24:
+        print('wat')
     cost = energy_cost(energy, wn)
     total_energy_per_pump = []
     total_cost_per_pump = []
@@ -58,11 +60,11 @@ def total_energy_and_cost(wn, pump_flowrate, head, pump_id_list, timestep=3600):
             pump_energy_series.append(energy.loc[time_loc, pump])
             pump_cost_series.append(cost.loc[time_loc, pump])
 
-        total_energy_per_pump.append(sum(pump_energy_series))
-        total_cost_per_pump.append(sum(pump_cost_series))
+        total_energy_per_pump.append(np.sum(pump_energy_series))
+        total_cost_per_pump.append(np.sum(pump_cost_series))
 
-    total_energy = sum(total_energy_per_pump)
-    total_cost = sum(total_cost_per_pump)
+    total_energy = np.sum(total_energy_per_pump, axis=0)
+    total_cost = np.sum(total_cost_per_pump, axis=0)
 
     return total_energy, total_cost
 
@@ -95,20 +97,20 @@ def calculate_objective_function(wn, result):
 
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
-def calculate_objective_function_mm(wn, result, names, node_idx, jt_ids, pump_ids,
+def calculate_objective_function_mm(wn, result, node_idx,
                                     pump_id_list, pump_flowrates, total_heads, timestep=3600):
     # The dataframe below should be done outside for the whole df to improve performance
-    pump_flowrates.index = pump_flowrates.index * 3600
-    total_heads.index = total_heads.index * 3600
+    pump_flowrates.index = (pump_flowrates.index % 24) * 3600
+    total_heads.index = (total_heads.index % 24) * 3600
 
     calculation = total_energy_and_cost(wn, pump_flowrates, total_heads, pump_id_list, timestep)
     total_energy = calculation[0]
     total_cost = calculation[1]
 
     critical_node_pressures = []
-    for node in range(node_idx):
-        pressure = min(result[:, node])
-        critical_node_pressures.append(pressure.numpy())
+    # Vectorized operation to find the minimum pressure for each node
+    min_pressures = result.min(axis=0)  # Min along rows for each column (node)
+    critical_node_pressures = -min_pressures[0][:node_idx] + 14  # Assuming node_idx is the count of nodes
 
     return total_energy, total_cost, critical_node_pressures
 
