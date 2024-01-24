@@ -99,6 +99,7 @@ def calculate_objective_function_mm(wn, result, names, node_idx, jt_ids, pump_id
                                     pump_id_list, pump_flowrates, total_heads, timestep=3600):
     # The dataframe below should be done outside for the whole df to improve performance
     pump_flowrates.index = pump_flowrates.index * 3600
+    total_heads.index = total_heads.index * 3600
 
     calculation = total_energy_and_cost(wn, pump_flowrates, total_heads, pump_id_list, timestep)
     total_energy = calculation[0]
