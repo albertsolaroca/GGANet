@@ -82,14 +82,22 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
     pump_filter = np.where(edge_types == 'Pump')[0]
     pump_ids = set(edge_ids[pump_filter])
 
-    pump_flowrate_raw = output[:, node_idx:] / 1000
+    pump_flowrate_raw = output[:, node_idx:] / 1000 # L/s to m3/s
     pressures_raw = output[:, :node_idx]
 
+    # Heads
+    pressures = pd.DataFrame(data=pressures_raw, index=range(0, len(output)), columns=jt_ids)
+    heads = pd.DataFrame(data=names['node_heads'], index=range(0, len(output)))
+
+    total_heads = heads.add(pressures, fill_value=0)
+
+    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, columns=pump_ids)
+    pump_flowrates = pump_flowrates.clip(lower=0)
 
     # Loop through all outputted examples
     for i in range(0, len(output), 24):
         energy, cost, nodal_pressures = (
-            calculate_objective_function_mm(wn, output[i:(24 + i)], names, node_idx, jt_ids, pump_ids, pump_id_list, pressures_raw[i:(24 + i)], pump_flowrate_raw[i:(24 + i)]))
+            calculate_objective_function_mm(wn, output[i:(24 + i)], names, node_idx, jt_ids, pump_ids, pump_id_list, pump_flowrates[i:(24 + i)], total_heads[i:(24 + i)]))
 
         minimum_pressure_required = [14 for i in range(len(nodal_pressures))]
 
@@ -198,7 +206,8 @@ if __name__ == "__main__":
 
     # problem = make_problem('FOS_pump_sched_flow')
     # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
-    problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
@@ -206,7 +215,7 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 5)
+    termination = get_termination("n_gen", 10)
 
     res = minimize(problem,
                    algorithm,
@@ -224,8 +233,8 @@ if __name__ == "__main__":
     if res.X.astype(int).shape[0] > 1:
         for i in range(len(res.X.astype(int))):
             resuts = res.X.astype(int)[i]
-            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
-            evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
+            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)[i]])
+            evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [res.X.astype(int)[i]])
             pressure_issues_mm = [i for i in evaluation_mm[1][0] if i >= 0]
             print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
             pressure_issues = [i for i in evaluation[1] if i >= 0]

@@ -96,17 +96,9 @@ def calculate_objective_function(wn, result):
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
 def calculate_objective_function_mm(wn, result, names, node_idx, jt_ids, pump_ids,
-                                    pump_id_list, pressures_raw, pump_flowrate_raw, timestep=3600):
+                                    pump_id_list, pump_flowrates, total_heads, timestep=3600):
     # The dataframe below should be done outside for the whole df to improve performance
-
-    # Heads
-    pressures = pd.DataFrame(data=pressures_raw, index=range(0, timestep * 24, timestep), columns=jt_ids)
-    heads = pd.DataFrame(data=names['node_heads'], index=range(0, timestep * 24, timestep))
-
-    total_heads = heads.add(pressures, fill_value=0)
-
-    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, index=range(0, timestep * 24, timestep), columns=pump_ids)
-    pump_flowrates = pump_flowrates.clip(lower=0)
+    pump_flowrates.index = pump_flowrates.index * 3600
 
     calculation = total_energy_and_cost(wn, pump_flowrates, total_heads, pump_id_list, timestep)
     total_energy = calculation[0]

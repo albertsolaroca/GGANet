@@ -341,7 +341,7 @@ class UnrollingModel(nn.Module):
 
             res_s_q = self.hids_q(s)
 
-            for i in range(self.num_blocks):
+            for i in range(self.num_blocks - 1):
                 D_q = self.hidD_q[i](torch.cat((torch.mul(q, res_S_q), pump_settings), dim=1))
                 D_h = self.hidD_h[i](D_q)
                 hid_x = torch.mul(D_q, torch.sum(torch.stack([q, res_s_q, res_h0_q]), dim=0))
