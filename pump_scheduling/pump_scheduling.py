@@ -198,7 +198,7 @@ if __name__ == "__main__":
 
     # problem = make_problem('FOS_pump_sched_flow')
     # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
-    problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
