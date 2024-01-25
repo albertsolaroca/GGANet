@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_2']
+network: ['EPANET Net 3']
 
 
 # number of training samples to use (if < than total)
@@ -23,8 +23,8 @@ algorithms:
 #    - MLPDynamicOnly
 #    - MLPStatic
 #    - BaselineUnrolling
-    - UnrollingModelQ
-#    - UnrollingModel
+#    - UnrollingModelQ
+    - UnrollingModel
 #     - UnrollingModelSimple
 
 # hyper params for each model
@@ -73,12 +73,12 @@ hyperParams:
 #                - 3
 #                - 4
 adamParams:
-    lr: 0.01
+    lr: 0.001
     weight_decay: 0.0001
 
 
 trainParams:
-    num_epochs: 500
+    num_epochs: 1000
     batch_size: 128
 
 
