@@ -541,21 +541,21 @@ class UnrollingModelQ(nn.Module):
         super(UnrollingModelQ, self).__init__()
         torch.manual_seed(42)
         self.indices = indices
-        # self.num_heads = junctions + indices['base_heads'].stop
+        self.num_tanks = indices['tanks'].stop - indices['tanks'].start
+        self.num_heads = junctions + self.num_tanks
         self.demand_nodes = junctions
         self.demand_start = indices['demand_timeseries'].start
-        self.num_base_heads = indices['base_heads'].stop - indices['base_heads'].start
+        self.num_reservoirs = indices['reservoirs'].stop - indices['reservoirs'].start
         self.num_blocks = num_layers
         self.static_feat_end = indices['pump_schedules'].start
         # To calculate amount of pumps we assume that the time period is 24
         self.pump_number = int((self.indices['pump_schedules'].stop - self.indices['pump_schedules'].start) / 24)
         self.num_flows = indices['diameter'].stop - indices['diameter'].start + self.pump_number
-        self.num_heads = num_outputs - self.pump_number
 
         self.hidq0_h = Linear(self.num_flows, self.num_heads)  # 4.14
         self.hids_q = Linear(self.demand_nodes, self.num_flows)  # 4.6/4.10
-        self.hidh0_h = Linear(self.num_base_heads, self.num_heads)  # 4.7/4.11
-        self.hidh0_q = Linear(self.num_base_heads, self.num_flows)  # 4.8/4.12
+        self.hidh0_h = Linear(self.num_reservoirs + self.num_tanks, self.num_heads)  # 4.7/4.11
+        self.hidh0_q = Linear(self.num_reservoirs + self.num_tanks, self.num_flows)  # 4.8/4.12
         self.hid_S = Sequential(Linear(indices['diameter'].stop - indices['diameter'].start, self.num_flows),
                                 nn.ReLU())  # 4.9/4.13
 
@@ -575,8 +575,10 @@ class UnrollingModelQ(nn.Module):
     def forward(self, x, num_steps=1):
 
         # s is the demand and h0 is the heads (perhaps different when tanks are added)
-        h0, d = (x[:, self.indices['base_heads']].float(),
+        reservoirs, tank_levels, d = (x[:, self.indices['reservoirs']].float(), x[:, self.indices['tanks']].float(),
                  x[:, self.indices['diameter']].float())
+
+        h0 = torch.cat((reservoirs, tank_levels), dim=1)
 
         coeff_r, coeff_n = (x[:, self.indices['coeff_r']].float(),
                             x[:, self.indices['coeff_n']].float())
@@ -624,8 +626,8 @@ class UnrollingModelQ(nn.Module):
 
             # Append the prediction for the current time step
             pred_heads = h
-            pred_pump_flows = q[:, -self.pump_number:]
-            prediction = torch.cat((pred_heads, pred_pump_flows), dim=1)
+            pred_flows = q
+            prediction = torch.cat((pred_heads, pred_flows), dim=1)
             predictions.append(prediction)
 
         if num_steps == 1:
