@@ -206,7 +206,7 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 5)
+    termination = get_termination("n_gen", 100)
 
     res = minimize(problem,
                    algorithm,
@@ -221,17 +221,34 @@ if __name__ == "__main__":
 
     print("Best solution found: %s" % res.X.astype(int))
 
-    if res.X.astype(int).shape[0] > 1:
+    if res.X.astype(int).shape[0] > 0:
+
+        energy_evaluations = []
+        cost_evaluations = []
+
+        energy_evaluations_mm = []
+        cost_evaluations_mm = []
+
         for i in range(len(res.X.astype(int))):
             resuts = res.X.astype(int)[i]
-            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
-            evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
+            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)[i]])
+            evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [res.X.astype(int)[i]])
             pressure_issues_mm = [i for i in evaluation_mm[1][0] if i >= 0]
             print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
             pressure_issues = [i for i in evaluation[1] if i >= 0]
             print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0], pressure_issues)
             print("Function value: %s" % res.F[i])
             print("Constraint violation: %s" % res.CV[i])
+
+            energy_evaluations.append(evaluation[0][0])
+            cost_evaluations.append(evaluation[0][1])
+
+            energy_evaluations_mm.append(evaluation_mm[0][0])
+            cost_evaluations_mm.append(evaluation_mm[0][1])
+
+        plt.plot(energy_evaluations, cost_evaluations, 'o', label='WNTR')
+        plt.plot(energy_evaluations_mm, cost_evaluations_mm, 'o', label='MM')
+        plt.show()
 
     print("Function value: %s" % res.F)
 
