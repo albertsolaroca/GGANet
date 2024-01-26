@@ -298,7 +298,7 @@ def make_problem_mm(input_file='FOS_pump_sched_flow_single', switch_penalty=0):
     junctions = len(wn.junction_name_list)
     tanks = len(wn.tank_name_list)
 
-    return SchedulePumpParallel(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
+    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
 
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
@@ -317,13 +317,13 @@ if __name__ == "__main__":
     # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
     problem = make_problem_mm(switch_penalty=1)
 
-    algorithm = NSGA2(pop_size=10000,
+    algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
                       # crossover=TwoPointCrossover(),
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 1)
+    termination = get_termination("n_gen", 10)
 
     res = minimize(problem,
                    algorithm,
