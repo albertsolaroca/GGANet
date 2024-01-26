@@ -66,7 +66,6 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
     total_cost = []
     total_pressure_surplus = []
 
-
     wn = make_network('../data_generation/networks/' + network_file + '.inp')
     # get wn patterns
     pats = wn.patterns
@@ -240,7 +239,7 @@ class SchedulePump(ElementwiseProblem):
 
 class SchedulePumpBatch(Problem):
 
-    def __init__(self, network_file, n_var=24, n_ieq_constr=1, switch_penalty=0):
+    def __init__(self, network_file, n_var=24, n_ieq_constr=37, switch_penalty=0):
         super().__init__(n_var=n_var,
                          n_obj=3,
                          n_ieq_constr=n_ieq_constr,
@@ -257,6 +256,7 @@ class SchedulePumpBatch(Problem):
         # The objective of the function. Total energy to minimize
         out["F"] = [evaluation[0][0], evaluation[0][1], self.switch_penalty * count_switches_2d(x)]
 
+        # eval = determine_positive(evaluation[1])
         # The constraints of the function, as in pressure violations per node
         out["G"] = evaluation[1]
 
@@ -298,7 +298,7 @@ def make_problem_mm(input_file='FOS_pump_sched_flow_single', switch_penalty=0):
     junctions = len(wn.junction_name_list)
     tanks = len(wn.tank_name_list)
 
-    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=junctions + tanks, switch_penalty=switch_penalty)
+    return SchedulePumpBatch(network_file=input_file, n_var=time_discrete, n_ieq_constr=1, switch_penalty=switch_penalty)
 
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
@@ -314,8 +314,8 @@ if __name__ == "__main__":
 
     # problem = make_problem()
     # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
-    # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
-    problem = make_problem_mm(switch_penalty=1)
+    problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    # problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
                       sampling=BinaryRandomSampling(),
@@ -338,12 +338,12 @@ if __name__ == "__main__":
 
     print("Best solution found: %s" % res.X.astype(int))
 
-    if res.X.astype(int).shape[0] > 1:
+    if res.X.astype(int).shape[0] > 0:
         for i in range(len(res.X.astype(int))):
             resuts = res.X.astype(int)[i]
-            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [res.X.astype(int)[i]])
-            evaluation = optimize_pump_schedule_WNTR('FOS_pump_sched_flow_single_1', [res.X.astype(int)[i]])
-            pressure_issues_mm = [i for i in evaluation_mm[1][0] if i >= 0]
+            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
+            evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
+            pressure_issues_mm = [i for i in evaluation_mm[1] if i >= 0]
             print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
             pressure_issues = [i for i in evaluation[1] if i >= 0]
             print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0], pressure_issues)

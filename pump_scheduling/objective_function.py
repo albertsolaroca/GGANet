@@ -46,12 +46,38 @@ def total_energy_and_cost(wn, pump_flowrate, head, pump_id_list, timestep=3600):
     if len(energy) != 24:
         print('wat')
     cost = energy_cost(energy, wn)
+    total_energy_per_pump = []
+    total_cost_per_pump = []
+
+    for pump in pump_id_list:
+        # wn.get_link(pump).energy_price = 0.75
+        # Energy consumption & Cost
+        pump_energy_series = []
+        pump_cost_series = []
+
+        for time_loc in range(0, timestep * 24, timestep):
+            # Energy in Watts divided by 1000 to get kW consumed per hour (kWh)
+            pump_energy_series.append(energy.loc[time_loc, pump])
+            pump_cost_series.append(cost.loc[time_loc, pump])
+
+        total_energy_per_pump.append(np.sum(pump_energy_series))
+        total_cost_per_pump.append(np.sum(pump_cost_series))
+
+    total_energy = np.sum(total_energy_per_pump, axis=0)
+    total_cost = np.sum(total_cost_per_pump, axis=0)
+
+    return total_energy, total_cost
+
+def total_energy_and_cost_mm(wn, pump_flowrate, head, pump_id_list, timestep=3600):
+    energy = energy_consumption(wn, pump_flowrate, head)
+    if len(energy) != 24:
+        print('wat')
+    cost = energy_cost(energy, wn)
 
     total_energy = np.sum(energy, axis=0)
     total_cost = np.sum(cost, axis=0)
 
     return total_energy, total_cost
-
 
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
@@ -83,25 +109,28 @@ def calculate_objective_function(wn, result):
 # and list of pump_ids, list of critical nodes and demand pattern id
 def calculate_objective_function_mm(wn, result, node_idx,
                                     pump_id_list, pump_flowrates, total_heads, timestep=3600):
-    # The dataframe below should be done outside for the whole df to improve performance
-    # pump_flowrates = pd.DataFrame(pump_flowrates, index=range(len(pump_flowrates)))
-    # total_heads = pd.DataFrame(total_heads, index=range(len(total_heads)))
 
     pump_flowrates.index = (pump_flowrates.index % 24) * 3600
     total_heads.index = (total_heads.index % 24) * 3600
-
-
-    calculation = total_energy_and_cost(wn, pump_flowrates, total_heads, pump_id_list, timestep)
-    total_energy = calculation[0]
-    total_cost = calculation[1]
-
-    critical_node_pressures = []
     # Vectorized operation to find the minimum pressure for each node
-    min_pressures = result.min(axis=0)  # Min along rows for each column (node)
-    critical_node_pressures = -min_pressures[0][:node_idx] + 14  # Assuming node_idx is the count of nodes
+    result_numpy = result.numpy()
+    min_pressures = result_numpy.min(axis=0)  # Min along rows for each column (node)
+    critical_node_pressures = -min_pressures[:node_idx] + 15  # Assuming node_idx is the count of nodes
+    criticality = determine_positive(critical_node_pressures)
 
-    return total_energy, total_cost, critical_node_pressures
+    if criticality == 1:
+        return 0, 0, 1
 
+    calculation = total_energy_and_cost_mm(wn, pump_flowrates, total_heads, pump_id_list, timestep)
+    total_energy = calculation[0].values[0]
+    total_cost = calculation[1].values[0]
+
+    return total_energy, total_cost, criticality
+
+def determine_positive(lst):
+    # Convert the list to a NumPy array for efficient processing
+    # This conversion is efficient; NumPy is optimized for such operations
+    return 1 if np.any(lst > 0) else -1
 
 def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True):
     wn = make_network(file)
