@@ -313,8 +313,8 @@ if __name__ == "__main__":
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
 
     # problem = make_problem()
-    # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
-    problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
+    # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
     # problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
@@ -323,74 +323,50 @@ if __name__ == "__main__":
                       mutation=BitflipMutation(),
                       eliminate_duplicates=True)
 
-    termination = get_termination("n_gen", 10)
+    total_output = []
 
-    res = minimize(problem,
-                   algorithm,
-                   termination,
-                   seed=1,
-                   verbose=True, )
+    for j in range(5, 20, 1):
 
-    pareto_front = res.F
-    sorted_indices = pareto_front[:, 0].argsort()
-    sorted_solutions = res.X[sorted_indices]
-    print('Found', len(sorted_solutions), 'solutions')
+        termination = get_termination("n_gen", j)
 
-    print("Best solution found: %s" % res.X.astype(int))
+        res = minimize(problem,
+                       algorithm,
+                       termination,
+                       seed=np.random.randint(100),
+                       verbose=True, )
+        # good seed = 1
+        pareto_front = res.F
+        sorted_indices = pareto_front[:, 0].argsort()
+        sorted_solutions = res.X[sorted_indices]
+        # print('Found', len(sorted_solutions), 'solutions')
 
-    if res.X.astype(int).shape[0] > 0:
-        for i in range(len(res.X.astype(int))):
-            resuts = res.X.astype(int)[i]
-            evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
-            evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
-            pressure_issues_mm = [i for i in evaluation_mm[1] if i >= 0]
-            print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
-            pressure_issues = [i for i in evaluation[1] if i >= 0]
-            print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0], pressure_issues)
-            print("Function value: %s" % res.F[i])
-            print("Constraint violation: %s" % res.CV[i])
+        # print("Best solution found: %s" % res.X.astype(int))
+        if res.X.astype(int).shape[0] > 0:
+            for i in range(len(res.X.astype(int))):
+                output = {}
+                results = res.X.astype(int)[i]
+                evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
+                evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
+                # pressure_issues_mm = [i for i in evaluation_mm[1] if i >= 0]
+                # print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
+                # print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0], pressure_issues)
+                pressure_issues = [i for i in evaluation[1] if i >= 0]
+                valid = False
+                if len(pressure_issues) == 0:
+                    valid = True
+                if evaluation_mm[0][0][0] != 0.0:
+                    print('lol')
+                if res.F[i][2] != 0:
+                    output['n_generations'] = j
+                    output['Switches'] = res.F[i][2]
+                    output['Valid'] = valid
+                    output['Energy (kWh) WNTR'] = evaluation[0][0]
+                    output['Cost (€) WNTR'] = evaluation[0][1]
+                    output['Energy (kWh) Metamodel'] = evaluation_mm[0][0][0]
+                    output['Cost (€) Metamodel'] = evaluation_mm[0][1][0]
+                    total_output.append(output)
+                # print("Function value: %s" % res.F[i])
+                # print("Constraint violation: %s" % res.CV[i])
 
-    print("Function value: %s" % res.F)
-
-    # t = res.F[:, 0]
-    # x = res.F[:, 1]
-    # y = res.F[:, 2]
-    # # Example data points
-    # X_data = np.array([1, 2, 3, 4])
-    # Y_data = np.array([2, 3, 4, 5])
-    # Z_data = np.array([3, 4, 5, 6])
-    #
-    # # Create a meshgrid
-    # X_range = np.linspace(min(X_data) - 1, max(X_data) + 1, 30)
-    # Y_range = np.linspace(min(Y_data) - 1, max(Y_data) + 1, 30)
-    # X, Y = np.meshgrid(X_range, Y_range)
-    # R = np.sqrt(X ** 2 + Y ** 2)
-    #
-    # # Define a function for Z
-    # Z = np.sqrt(X ** 2 + Y ** 2)
-    #
-    # # Plotting
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    #
-    # # Plot the surface
-    # ax.plot_surface(X, Y, R, alpha=0.7)
-    #
-    # # Plot data points
-    # ax.scatter(X_data, Y_data, Z_data, color='r')
-    #
-    #
-    # # Set labels with increased labelpad
-    # ax.set_xlabel('X axis', labelpad=30)
-    # ax.set_ylabel('Y axis', labelpad=30)
-    # ax.set_zlabel('Z axis', labelpad=30)
-    #
-    # # Change perspective
-    # elevation_angle = 5
-    # azimuth_angle = 15
-    # ax.view_init(elev=elevation_angle, azim=azimuth_angle)
-    #
-    # # Legend
-    # ax.legend()
-    #
-    # plt.show()
+    output_df = pd.DataFrame(total_output)
+    output_df.to_csv('scheduling.csv', index=False)
