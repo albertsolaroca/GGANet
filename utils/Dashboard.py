@@ -99,7 +99,7 @@ class Dashboard:
 
                     node_name = self.node_indexes[points.point_inds[0]]
 
-                    f.layout.annotations[1].update(text=f"Comparison of hydraulic head for node {node_name}")
+                    f.layout.annotations[1].update(text=f"Comparison of hydraulic head for node {node_name + 1}")
             except Exception as e:
                 pass
 
@@ -210,13 +210,13 @@ class Dashboard:
             value='Real Head',
             options=['Predicted Head', 'Real Head', 'Error', 'R2']
         )
-
         error_heads_pd = self.real_heads_pd - self.predicted_heads_pd
+        error_heads_pd[37] = error_heads_pd[36]
+        error_heads_pd[36] = 0
 
         r2 = r2_score(self.real_heads_pd.to_numpy(), self.predicted_heads_pd.to_numpy(), multioutput='raw_values')
         clipped_r2 = np.clip(r2, -10, 1)
         inverted_r2 = 1 / (clipped_r2 - min(clipped_r2) + 1e-6)
-
         # wet_r2 = utils.wet_r2_per_node(self.swmm_heads_pd, self.predicted_heads_pd, elevation)
         # inverted_wet_r2 = 1 / (wet_r2 - min(wet_r2) + 1e-6)
         #
@@ -241,7 +241,7 @@ class Dashboard:
                 self.f.update_traces(marker=dict(color=value, size=value - min_value_head, sizeref=sizeref, sizemin=1,
                                                  colorscale='YlGnBu', cmax=2, cmin=0),
                                      selector=dict(name="coordinates"))
-                self.f.update_yaxes(title_text="Head [masl]", row=1, col=2)
+                self.f.update_yaxes(title_text="Head [m]", row=1, col=2)
 
             if (property == 'Predicted Head'):
 
@@ -253,7 +253,7 @@ class Dashboard:
                 self.f.update_traces(marker=dict(color=value, size=value - min_value_head, sizeref=sizeref, sizemin=1,
                                                  colorscale='YlGnBu', cmax=2, cmin=0),
                                      selector=dict(name="coordinates"))
-                self.f.update_yaxes(title_text="Head [masl]", row=1, col=2)
+                self.f.update_yaxes(title_text="Head [m]", row=1, col=2)
 
             if (property == 'Error'):
 
@@ -264,15 +264,17 @@ class Dashboard:
                 self.f.update_traces(marker=dict(color=value, size=value - min(value), sizeref=sizeref, sizemin=1,
                                                  colorscale='inferno_r'), selector=dict(name="coordinates"))
                 self.f.update_traces(text=self._get_text(value), selector=dict(name="coordinates"))
-                self.f.update_yaxes(title_text="Error [m]", row=1, col=2)
+                self.f.update_yaxes(title_text="Head [m]", row=1, col=2)
 
-            if property == 'R2':
+            if (property == 'R2'):
 
                 sizeref = 2. * max(inverted_r2) / (6 ** 2)
+
                 self.f.update_traces(
                     marker=dict(color=clipped_r2, size=inverted_r2, sizeref=sizeref, sizemin=3, colorscale='RdBu'),
                     selector=dict(name="coordinates"))
                 self.f.update_traces(text=self._get_text(r2), selector=dict(name="coordinates"))
+                self.f.update_yaxes(title_text="Head [m]", row=1, col=2)
 
 
         textbox.observe(response, names="value")

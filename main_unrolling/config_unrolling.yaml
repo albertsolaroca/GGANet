@@ -11,11 +11,11 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_2']
+network: ['FOS_pump_4']
 
 
 # number of training samples to use (if < than total)
-tra_num: 1000
+tra_num: 10
 
 # model architectures to train
 algorithms:
@@ -59,7 +59,7 @@ adamParams:
 
 
 trainParams:
-    num_epochs: 200
+    num_epochs: 500
     batch_size: 128
 
 
@@ -69,4 +69,4 @@ trainParams:
 earlyStopping:
     patience: 20
     divisor: 2
-    epoch_frequency: 30
+    epoch_frequency: 50
