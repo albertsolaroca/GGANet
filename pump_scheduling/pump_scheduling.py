@@ -332,7 +332,7 @@ if __name__ == "__main__":
         res = minimize(problem,
                        algorithm,
                        termination,
-                       seed=np.random.randint(100),
+                       seed=1,
                        verbose=True, )
         # good seed = 1
         pareto_front = res.F
@@ -354,8 +354,6 @@ if __name__ == "__main__":
                 valid = False
                 if len(pressure_issues) == 0:
                     valid = True
-                if evaluation_mm[0][0][0] != 0.0:
-                    print('lol')
                 if res.F[i][2] != 0:
                     output['n_generations'] = j
                     output['Switches'] = res.F[i][2]
