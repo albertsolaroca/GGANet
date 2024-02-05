@@ -313,8 +313,8 @@ if __name__ == "__main__":
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
 
     # problem = make_problem()
-    problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
-    # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
+    problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
     # problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
@@ -325,46 +325,53 @@ if __name__ == "__main__":
 
     total_output = []
 
-    for j in range(5, 20, 1):
+    for k in range(1, 5, 1):
+        for j in range(5, 21, 1):
 
-        termination = get_termination("n_gen", j)
+            termination = get_termination("n_gen", j)
 
-        res = minimize(problem,
-                       algorithm,
-                       termination,
-                       seed=1,
-                       verbose=True, )
-        # good seed = 1
-        pareto_front = res.F
-        sorted_indices = pareto_front[:, 0].argsort()
-        sorted_solutions = res.X[sorted_indices]
-        # print('Found', len(sorted_solutions), 'solutions')
+            res = minimize(problem,
+                           algorithm,
+                           termination,
+                           seed=k,
+                           verbose=True, )
+            # good seed = 1
+            pareto_front = res.F
+            sorted_indices = pareto_front[:, 0].argsort()
+            sorted_solutions = res.X[sorted_indices]
+            # print('Found', len(sorted_solutions), 'solutions')
 
-        # print("Best solution found: %s" % res.X.astype(int))
-        if res.X.astype(int).shape[0] > 0:
-            for i in range(len(res.X.astype(int))):
-                output = {}
-                results = res.X.astype(int)[i]
-                evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
-                evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
-                # pressure_issues_mm = [i for i in evaluation_mm[1] if i >= 0]
-                # print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
-                # print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0], pressure_issues)
-                pressure_issues = [i for i in evaluation[1] if i >= 0]
-                valid = False
-                if len(pressure_issues) == 0:
-                    valid = True
-                if res.F[i][2] != 0:
-                    output['n_generations'] = j
-                    output['Switches'] = res.F[i][2]
-                    output['Valid'] = valid
-                    output['Energy (kWh) WNTR'] = evaluation[0][0]
-                    output['Cost (€) WNTR'] = evaluation[0][1]
-                    output['Energy (kWh) Metamodel'] = evaluation_mm[0][0][0]
-                    output['Cost (€) Metamodel'] = evaluation_mm[0][1][0]
-                    total_output.append(output)
-                # print("Function value: %s" % res.F[i])
-                # print("Constraint violation: %s" % res.CV[i])
+            # print("Best solution found: %s" % res.X.astype(int))
+            if res.X.astype(int).shape[0] > 0:
+                for i in range(len(res.X.astype(int))):
+                    output = {}
+                    results = res.X.astype(int)[i]
+                    evaluation_mm = optimize_pump_schedule_metamodel('FOS_pump_2', [res.X.astype(int)[i]])
+                    evaluation = optimize_pump_schedule_WNTR('FOS_pump_2_0', [res.X.astype(int)[i]])
+                    # pressure_issues_mm = [i for i in evaluation_mm[1] if i >= 0]
+                    # print(f"Evaluation of solution {i} by mm: %s" % evaluation_mm[0], pressure_issues_mm)
+                    # print(f"Evaluation of solution {i} by WNTR: %s" % evaluation[0], pressure_issues)
+                    pressure_issues = [i for i in evaluation[1] if i >= 0]
+                    valid = False
+                    if len(pressure_issues) == 0:
+                        valid = True
+                    if res.F[i][2] != 0:
+                        output['n_generations'] = j
+                        output['Switches'] = res.F[i][2]
+                        output['Valid'] = valid
+                        output['Energy (kWh) WNTR'] = evaluation[0][0]
+                        output['Cost (€) WNTR'] = evaluation[0][1]
+                        output['Energy (kWh) Metamodel'] = evaluation_mm[0][0][0]
+                        output['Cost (€) Metamodel'] = evaluation_mm[0][1][0]
+                        total_output.append(output)
+                    # print("Function value: %s" % res.F[i])
+                    # print("Constraint violation: %s" % res.CV[i])
 
-    output_df = pd.DataFrame(total_output)
-    output_df.to_csv('scheduling.csv', index=False)
+        output_df = pd.DataFrame(total_output)
+        # output_df.to_csv('scheduling_mm_save.csv', index=False)
+        filename = 'scheduling_mm.csv'
+        with open(filename, 'a') as f:
+            if os.path.isfile(filename) and os.path.getsize(filename) > 0:
+                output_df.to_csv(filename, mode='a', header=False, index=False, line_terminator='\n')
+            else:
+                output_df.to_csv(filename, mode='a', header=True, index=False, line_terminator='\n')
