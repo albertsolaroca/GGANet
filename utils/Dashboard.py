@@ -69,11 +69,12 @@ class Dashboard:
         trace = f.data[0]
 
         f.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
-        f.update_layout(width=1600, height=800, title="Distribution of real Head at hour 0")
+        f.update_layout(width=1600, height=800, title="Node selection", title_font=dict(size=20), dict1=dict(legend=dict(font=dict(size=20))))
         f.update_xaxes(showticklabels=False, col=1)
         f.update_yaxes(showticklabels=False, col=1)
-        f.update_yaxes(title_text="Head [masl]", row=1, col=2)
-        f.update_xaxes(title_text="Time [hours]", row=1, col=2)
+        f.update_yaxes(title_text="Head [m]", row=1, col=2, title_font=dict(size=18), tickfont=dict(size=14))
+        f.update_xaxes(title_text="Time [hours]", row=1, col=2, title_font=dict(size=18), tickfont=dict(size=14))
+
 
         # Code used to export HTML
         # f.write_html('./my_HTML.html', auto_play=False)
@@ -100,6 +101,7 @@ class Dashboard:
                     node_name = self.node_indexes[points.point_inds[0]]
 
                     f.layout.annotations[1].update(text=f"Comparison of hydraulic head for node {node_name + 1}")
+                    f.layout.annotations[1].update(font=dict(size=20))
             except Exception as e:
                 pass
 
@@ -115,7 +117,7 @@ class Dashboard:
 
         scatter_trace = go.Scatter(x=x,
                                    y=y,
-                                   name="Our model",
+                                   name="Our metamodel",
                                    mode="lines+markers",
                                    line=dict(width=3),
                                    marker=dict(size=4, color="#6F1D77"),
@@ -126,7 +128,7 @@ class Dashboard:
     def _get_real_scatter_trace(self, x, y):
         scatter_trace = go.Scatter(x=x,
                                    y=y,
-                                   name="real",
+                                   name="Real",
                                    mode="lines+markers",
                                    line=dict(width=3),
                                    marker=dict(size=4, color="#00A6D6"),
