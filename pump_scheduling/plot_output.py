@@ -56,20 +56,20 @@ if __name__ == '__main__':
     # plt.legend()
     # plt.show()
     #
-    plt.plot(gen_range, cost, label='EPANET')
-    plt.plot(gen_range, cost_mm, label='Metamodel')
+    plt.plot(gen_range, cost, label='EPANET - 34\'')
+    plt.plot(gen_range, cost_mm, label='Metamodel - 2\'')
     plt.xlabel('Generations', fontsize=12)
     plt.ylabel('€', fontsize=12)
-    plt.title('Operation cost of optimal schedule')
+    plt.title('Operation cost of optimal schedule', fontsize=13)
     plt.legend()
     plt.show()
 
-    plt.plot(gen_range, energy, label='EPANET')
-    plt.plot(gen_range, energy_mm, label='Metamodel')
+    plt.plot(gen_range, energy, label='EPANET - 34\'')
+    plt.plot(gen_range, energy_mm, label='Metamodel - 2\'')
     plt.xlabel('Generations', fontsize=12)
 
     plt.ylabel('kWh', fontsize=12)
-    plt.title('Energy consumption of optimal schedule')
+    plt.title('Energy consumption of optimal schedule', fontsize=13)
     plt.legend()
     plt.show()
 
