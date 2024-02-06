@@ -313,8 +313,8 @@ if __name__ == "__main__":
     # print(optimize_pump_schedule_metamodel('FOS_pump_sched_flow_single', [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1]]))
 
     # problem = make_problem()
-    # problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
-    problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
+    problem = make_problem(input_file='FOS_pump_2_0', switch_penalty=1)
+    # problem = make_problem_mm(input_file='FOS_pump_2', switch_penalty=1)
     # problem = make_problem_mm(switch_penalty=1)
 
     algorithm = NSGA2(pop_size=100,
@@ -324,6 +324,8 @@ if __name__ == "__main__":
                       eliminate_duplicates=True)
 
     total_output = []
+
+    start_time = time.time()
 
     for k in range(1, 5, 1):
         for j in range(5, 21, 1):
@@ -369,9 +371,12 @@ if __name__ == "__main__":
 
         output_df = pd.DataFrame(total_output)
         # output_df.to_csv('scheduling_mm_save.csv', index=False)
-        filename = 'scheduling_mm.csv'
+        filename = 'scheduling.csv'
         with open(filename, 'a') as f:
             if os.path.isfile(filename) and os.path.getsize(filename) > 0:
                 output_df.to_csv(filename, mode='a', header=False, index=False, line_terminator='\n')
             else:
                 output_df.to_csv(filename, mode='a', header=True, index=False, line_terminator='\n')
+
+    end_time = time.time()
+    print(f"Simulation time: {end_time - start_time}")
