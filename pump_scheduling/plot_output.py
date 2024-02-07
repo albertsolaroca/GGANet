@@ -4,7 +4,7 @@ import numpy as np
 
 if __name__ == '__main__':
 
-    ps_output_mm_all = pd.read_csv('scheduling_mm_save.csv', index_col=None)
+    ps_output_mm_all = pd.read_csv('scheduling_mm.csv', index_col=None)
     ps_output_mm = ps_output_mm_all[ps_output_mm_all['Valid'] == True]
     ps_output = pd.read_csv('scheduling.csv', index_col=None)
 
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     cost_mm = []
     energy_mm = []
 
-    gen_range = range(5, 21, 1)
+    gen_range = range(4, 12, 1)
 
     for i in gen_range:
         i_gen_mm = ps_output_mm[ps_output_mm['n_generations'] == i]
@@ -35,10 +35,10 @@ if __name__ == '__main__':
         avg_score_mm.append(np.average(total_score_mm.values))
         score.append(total_score.values)
         avg_score.append(np.average(total_score.values))
-        cost.append(np.average(total_cost.values))
-        energy.append(np.average(total_energy.values))
-        cost_mm.append(np.average(total_cost_mm.values))
-        energy_mm.append(np.average(total_energy_mm.values))
+        cost += list(total_cost.values)
+        energy += list(total_energy.values)
+        cost_mm += list(total_cost_mm.values)
+        energy_mm += list(total_energy_mm.values)
 
     # Valid over invalid schedules
     # print(len(ps_output_mm)/len(ps_output_mm_all))
@@ -56,25 +56,25 @@ if __name__ == '__main__':
     # plt.legend()
     # plt.show()
     #
-    plt.plot(gen_range, cost, label='EPANET - 34\'')
-    plt.plot(gen_range, cost_mm, label='Metamodel - 2\'')
-    plt.xlabel('Generations', fontsize=12)
-    plt.ylabel('€', fontsize=12)
-    plt.title('Operation cost of optimal schedule', fontsize=13)
-    plt.legend()
-    plt.show()
 
-    plt.plot(gen_range, energy, label='EPANET - 34\'')
-    plt.plot(gen_range, energy_mm, label='Metamodel - 2\'')
-    plt.xlabel('Generations', fontsize=12)
 
-    plt.ylabel('kWh', fontsize=12)
-    plt.title('Energy consumption of optimal schedule', fontsize=13)
-    plt.legend()
-    plt.show()
+    # plt.plot(gen_range, energy, label='EPANET - 34\'')
+    # plt.plot(gen_range, energy_mm, label='Metamodel - 2\'')
+    # plt.xlabel('Generations', fontsize=12)
+    # plt.ylabel('kWh', fontsize=12)
+    # plt.title('Energy consumption of optimal schedule', fontsize=13)
+    # plt.legend()
+    # plt.show()
 
     # plt.plot(ps_output_mm['n_generations'], ps_output_mm['Energy (kWh) WNTR'] + ps_output_mm['Cost (€) WNTR'])
     # plt.plot(ps_output['n_generations'], ps_output['Energy (kWh) WNTR'], label='WNTR')
     # plt.legend()
     # plt.show()
 
+    plt.scatter(energy, cost, label='EPANET - 34\'')
+    plt.scatter(energy_mm, cost_mm, label='Metamodel - 2\'')
+    plt.xlabel('Energy (kWh)', fontsize=12)
+    plt.ylabel('Cost (€)', fontsize=12)
+    plt.title('All solutions found', fontsize=13)
+    plt.legend()
+    plt.show()
