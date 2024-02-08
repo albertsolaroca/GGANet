@@ -72,16 +72,12 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
 
     # Loop through all outputted examples
 
-    for i in range(len(output_numpy)):
-        energy, cost, pressure_surplus = (
-        calculate_objective_function_mm(output_numpy[i], node_idx, electricity_price_values))
-    # result = np.apply_along_axis(lambda x: calculate_objective_function_mm(x, node_idx), 1, output_numpy)
+    # for i in range(len(output_numpy)):
+    #     energy, cost, pressure_surplus = (
+    #     calculate_objective_function_mm(output_numpy[i], node_idx, electricity_price_values))
+    result = calculate_objective_function_mm(output_numpy, node_idx, electricity_price_values)
 
-        total_energy.append(energy)
-        total_cost.append(cost)
-        total_pressure_surplus.append(pressure_surplus)
-
-    return [total_energy, total_cost], total_pressure_surplus
+    return result
 
 def optimize_pump_schedule_metamodel_parallel(network_file, new_pump_pattern_values):
     # Pre-set electricity pattern values to calculate cost

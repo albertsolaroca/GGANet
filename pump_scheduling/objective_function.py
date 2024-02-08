@@ -44,8 +44,8 @@ def pump_energy_mm(flowrate, head):
 
 def pump_power_mm(flowrate, head, start_node=36, end_node=0, efficiency=75):
 
-    start_head = head[:, start_node]
-    end_head = head[:, end_node]
+    start_head = head[:, :, start_node]
+    end_head = head[:, :, end_node]
     headloss = end_head - start_head
 
     power = 1000.0 * 9.81 * headloss * flowrate / efficiency  # Watts = J/s
@@ -106,7 +106,7 @@ def total_energy_and_cost_mm(pump_flowrate, head, electricity_values):
     total_energy = np.sum(energy, axis=0)
     total_cost = np.sum(cost, axis=0)
 
-    return total_energy, total_cost
+    return [total_energy, total_cost, -1]
 
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
@@ -141,26 +141,38 @@ from numba import jit
 def calculate_objective_function_mm(result, node_idx, electricity_values):
 
     # Vectorized operation to find the minimum pressure for each node
-    min_pressures = result[:, :node_idx].min(axis=0)  # Min along rows for each column (node)
-    critical_node_pressures = -min_pressures[:node_idx] + 15  # Assuming node_idx is the count of nodes
+    min_pressures = result[:, :, :node_idx].min(axis=1)  # Min along rows for each column (node)
+    # Removing the reservoir from the calculations as we do not care
+    critical_node_pressures = -min_pressures[:, :(node_idx -1)] + 15  # Assuming node_idx is the count of nodes
     criticality = determine_positive(critical_node_pressures)
 
-    if criticality == 1:
-        return 0, 0, 1
 
-    pump_flowrate = np.squeeze(result[:, node_idx:])
-    total_heads = result[:, :node_idx]
+    pump_flowrate = np.squeeze(result[:, :, node_idx:])
+    total_heads = result[:, :, :node_idx]
 
-    calculation = total_energy_and_cost_mm(pump_flowrate, total_heads, electricity_values)
-    total_energy = calculation[0]
-    total_cost = calculation[1]
+    # Determine indices where criticality != 1
+    indices_to_compute = np.where(criticality != 1)[0]
 
-    return total_energy, total_cost, criticality
+    # Placeholder for final result, adjust the shape according to your needs
+    final_result = np.empty((len(criticality), 3))  # Assuming the result shape is something like (n, 3)
+    final_result[:] = np.nan  # Optional: Fill with NaNs or another placeholder value
+
+    # Only call the function for indices where criticality != 1
+    if len(indices_to_compute) > 0:
+        computed_values = total_energy_and_cost_mm(pump_flowrate[indices_to_compute],
+                                                   total_heads[indices_to_compute],
+                                                   electricity_values[indices_to_compute])
+        final_result[indices_to_compute] = computed_values
+
+    # For indices where criticality == 1, set the predefined result
+    final_result[criticality == 1] = [0, 0, 1]  # Adjust according to the actual predefined result
+
+    return final_result
 
 def determine_positive(lst):
-    # Convert the list to a NumPy array for efficient processing
-    # This conversion is efficient; NumPy is optimized for such operations
-    return 1 if np.any(lst > 0) else -1
+    # Apply the condition element-wise and use np.where to assign 1 or -1
+    return np.where(np.any(lst > 0, axis=1), 1, -1)
+
 
 def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True):
     wn = make_network(file)
