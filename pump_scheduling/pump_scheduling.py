@@ -336,8 +336,8 @@ if __name__ == "__main__":
                         output['Energy (kWh) Metamodel'] = evaluation_mm[0][0][0]
                         output['Cost (€) Metamodel'] = evaluation_mm[0][1][0]
                         total_output.append(output)
-                    # print("Function value: %s" % res.F[i])
-                    # print("Constraint violation: %s" % res.CV[i])
+                    print("Function value: %s" % res.F[i])
+                    print("Constraint violation: %s" % res.CV[i])
 
         output_df = pd.DataFrame(total_output)
         # output_df.to_csv('scheduling_mm_save.csv', index=False)

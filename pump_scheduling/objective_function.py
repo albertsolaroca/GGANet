@@ -42,7 +42,7 @@ def pump_energy_mm(flowrate, head):
     return energy
 
 
-def pump_power_mm(flowrate, head, start_node=36, end_node=0, efficiency=75):
+def pump_power_mm(flowrate, head, start_node=36, end_node=0, efficiency=0.75):
 
     start_head = head[:, :, start_node]
     end_head = head[:, :, end_node]
@@ -103,8 +103,8 @@ def total_energy_and_cost_mm(pump_flowrate, head, electricity_values):
         print('wat')
     cost = energy_cost_mm(energy, electricity_values)
 
-    total_energy = np.sum(energy, axis=0)
-    total_cost = np.sum(cost, axis=0)
+    total_energy = np.sum(energy, axis=1)
+    total_cost = np.sum(cost, axis=1)
 
     return [total_energy, total_cost, -1]
 
