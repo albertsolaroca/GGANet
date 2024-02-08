@@ -224,11 +224,11 @@ class SchedulePumpBatch(Problem):
         # Minimization function
         evaluation = optimize_pump_schedule_metamodel(self.network_file, [x])
         # The objective of the function. Total energy to minimize
-        out["F"] = [evaluation[0][0], evaluation[0][1], self.switch_penalty * count_switches_2d(x)]
+        out["F"] = [evaluation[:, 0], evaluation[:, 1], self.switch_penalty * count_switches_2d(x)]
 
         # eval = determine_positive(evaluation[1])
         # The constraints of the function, as in pressure violations per node
-        out["G"] = evaluation[1]
+        out["G"] = evaluation[:, 2]
 
 class SchedulePumpParallel(Problem):
 

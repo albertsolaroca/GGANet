@@ -161,7 +161,7 @@ def calculate_objective_function_mm(result, node_idx, electricity_values):
     if len(indices_to_compute) > 0:
         computed_values = total_energy_and_cost_mm(pump_flowrate[indices_to_compute],
                                                    total_heads[indices_to_compute],
-                                                   electricity_values[indices_to_compute])
+                                                   electricity_values)
         final_result[indices_to_compute] = computed_values
 
     # For indices where criticality == 1, set the predefined result
