@@ -66,42 +66,16 @@ def optimize_pump_schedule_metamodel(network_file, new_pump_pattern_values):
     total_cost = []
     total_pressure_surplus = []
 
-    wn = make_network('../data_generation/networks/' + network_file + '.inp')
-    # get wn patterns
-    pats = wn.patterns
-
-    wn.add_pattern('EnergyPrice', electricity_price_values)
-    wn.options.energy.global_pattern = 'EnergyPrice'
-
-    pump_id_list = wn.pump_name_list
-    node_ids = np.array(names['node_ids'], copy=False)
-    edge_ids = np.array(names['edge_ids'], copy=False)
-    edge_types = np.array(names['edge_types'], copy=False)
-    node_types = np.array(names['node_types'], copy=False)
-
-    jt_filter = np.where((node_types == 'Junction') | (node_types == 'Tank'))[0]
-    jt_ids = node_ids[jt_filter]
-
-    pump_filter = np.where(edge_types == 'Pump')[0]
-    pump_ids = set(edge_ids[pump_filter])
-
-    pump_flowrate_raw = output[:, node_idx:] / 1000 # L/s to m3/s
-    pressures_raw = output[:, :node_idx]
-
-    # Heads
-    pressures = pd.DataFrame(data=pressures_raw, index=range(0, len(output)), columns=jt_ids)
-    heads = pd.DataFrame(data=names['node_heads'], index=range(0, len(output)))
-
-    total_heads = heads.add(pressures, fill_value=0)
-
-    pump_flowrates = pd.DataFrame(data=pump_flowrate_raw, columns=pump_ids)
-    pump_flowrates = pump_flowrates.clip(lower=0)
+    # Reshape the array to group every day together
+    output_numpy = output.numpy().reshape(-1, 24, 38)
+    output_numpy[:, :, node_idx:] = output_numpy[:, :, node_idx:].clip(min=0) / 1000  # L/s to m3/s
 
     # Loop through all outputted examples
-    for i in range(0, len(output), 24):
-        energy, cost, pressure_surplus = (
-            calculate_objective_function_mm(wn, output[i:(24 + i)], node_idx, pump_id_list, pump_flowrates[i:(24 + i)], total_heads[i:(24 + i)]))
 
+    for i in range(len(output_numpy)):
+        energy, cost, pressure_surplus = (
+        calculate_objective_function_mm(output_numpy[i], node_idx, electricity_price_values))
+    # result = np.apply_along_axis(lambda x: calculate_objective_function_mm(x, node_idx), 1, output_numpy)
 
         total_energy.append(energy)
         total_cost.append(cost)
@@ -327,8 +301,8 @@ if __name__ == "__main__":
 
     start_time = time.time()
 
-    for k in range(1, 5, 1):
-        for j in range(5, 12, 1):
+    for k in range(1, 2, 1):
+        for j in range(5, 6, 1):
 
             termination = get_termination("n_gen", j)
 
@@ -371,12 +345,12 @@ if __name__ == "__main__":
 
         output_df = pd.DataFrame(total_output)
         # output_df.to_csv('scheduling_mm_save.csv', index=False)
-        filename = 'scheduling_mm_time_30s.csv'
-        with open(filename, 'a') as f:
-            if os.path.isfile(filename) and os.path.getsize(filename) > 0:
-                output_df.to_csv(filename, mode='a', header=False, index=False, line_terminator='\n')
-            else:
-                output_df.to_csv(filename, mode='a', header=True, index=False, line_terminator='\n')
+        # filename = 'scheduling_mm_time_30s.csv'
+        # with open(filename, 'a') as f:
+        #     if os.path.isfile(filename) and os.path.getsize(filename) > 0:
+        #         output_df.to_csv(filename, mode='a', header=False, index=False, line_terminator='\n')
+        #     else:
+        #         output_df.to_csv(filename, mode='a', header=True, index=False, line_terminator='\n')
 
     end_time = time.time()
     print(f"Simulation time: {end_time - start_time}")

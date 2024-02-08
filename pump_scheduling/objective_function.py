@@ -34,10 +34,39 @@ def energy_consumption(wn, pump_flowrate, head):
     return energy
 
 
+def pump_energy_mm(flowrate, head):
+
+    power = pump_power_mm(flowrate, head)  # Watts = J/s
+    energy = power * 3600  # J = Ws
+
+    return energy
+
+
+def pump_power_mm(flowrate, head, start_node=36, end_node=0, efficiency=75):
+
+    start_head = head[:, start_node]
+    end_head = head[:, end_node]
+    headloss = end_head - start_head
+
+    power = 1000.0 * 9.81 * headloss * flowrate / efficiency  # Watts = J/s
+
+    return power
+
+def energy_consumption_mm(pump_flowrate, head):
+    # Energy consumption in kWh
+    energy = pump_energy_mm(pump_flowrate, head)  # in J
+    energy = energy / 3600000  # in kWh
+
+    return energy
+
 # Returns the energy cost of a given pump per timestep
 def energy_cost(energy, wn):
     cost = wntr.metrics.pump_cost(energy, wn)
     return cost
+
+def energy_cost_mm(energy, electricity_values):
+    cost = energy * electricity_values
+    return np.sum(cost)
 
 
 # Returns the total energy consumption and cost for a given pump
@@ -68,11 +97,11 @@ def total_energy_and_cost(wn, pump_flowrate, head, pump_id_list, timestep=3600):
 
     return total_energy, total_cost
 
-def total_energy_and_cost_mm(wn, pump_flowrate, head, pump_id_list, timestep=3600):
-    energy = energy_consumption(wn, pump_flowrate, head)
+def total_energy_and_cost_mm(pump_flowrate, head, electricity_values):
+    energy = energy_consumption_mm(pump_flowrate, head)
     if len(energy) != 24:
         print('wat')
-    cost = energy_cost(energy, wn)
+    cost = energy_cost_mm(energy, electricity_values)
 
     total_energy = np.sum(energy, axis=0)
     total_cost = np.sum(cost, axis=0)
@@ -107,23 +136,24 @@ def calculate_objective_function(wn, result):
 
 # Calculates total energy consumption for an input of new pumping patterns list, \
 # and list of pump_ids, list of critical nodes and demand pattern id
-def calculate_objective_function_mm(wn, result, node_idx,
-                                    pump_id_list, pump_flowrates, total_heads, timestep=3600):
+from numba import jit
+# @jit(nopython=True)
+def calculate_objective_function_mm(result, node_idx, electricity_values):
 
-    pump_flowrates.index = (pump_flowrates.index % 24) * 3600
-    total_heads.index = (total_heads.index % 24) * 3600
     # Vectorized operation to find the minimum pressure for each node
-    result_numpy = result.numpy()
-    min_pressures = result_numpy.min(axis=0)  # Min along rows for each column (node)
+    min_pressures = result[:, :node_idx].min(axis=0)  # Min along rows for each column (node)
     critical_node_pressures = -min_pressures[:node_idx] + 15  # Assuming node_idx is the count of nodes
     criticality = determine_positive(critical_node_pressures)
 
     if criticality == 1:
         return 0, 0, 1
 
-    calculation = total_energy_and_cost_mm(wn, pump_flowrates, total_heads, pump_id_list, timestep)
-    total_energy = calculation[0].values[0]
-    total_cost = calculation[1].values[0]
+    pump_flowrate = np.squeeze(result[:, node_idx:])
+    total_heads = result[:, :node_idx]
+
+    calculation = total_energy_and_cost_mm(pump_flowrate, total_heads, electricity_values)
+    total_energy = calculation[0]
+    total_cost = calculation[1]
 
     return total_energy, total_cost, criticality
 
@@ -172,7 +202,7 @@ def run_WNTR_model(file, new_pattern_values, electricity_values, continuous=True
     wn.add_pattern('EnergyPrice', electricity_values)
     wn.options.energy.global_pattern = 'EnergyPrice'
 
-    set_pump_efficiency(wn)
+    set_pump_efficiency(wn, 75)
 
     pump_pattern_ids = ['pump_' + item for item in wn.pump_name_list]
     change_pumping_pattern(wn, pump_pattern_ids, new_pattern_values)
@@ -191,7 +221,6 @@ def run_metamodel(network_name, new_pump_pattern_values):
     # wn = make_network(file)
     datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_scheduling(
         network_name)
-
 
     one_sample = datasets_MLP[0][0]
 
