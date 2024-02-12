@@ -11,7 +11,7 @@ seeds:
     torch: 3407
 
 # networks to use
-network: ['FOS_pump_4']
+network: ['ky2_c']
 
 
 # number of training samples to use (if < than total)
