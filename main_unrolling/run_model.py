@@ -56,12 +56,24 @@ def metrics(real, pred, dummy):
         model_scores.append(model_score)
         print("NSE-values for node", i, "\n", "Dummy:", dummy_score, "\n Model", model_score)
 
-    # plt.plot(dummy_scores, label="Dummy")
-    plt.title('Model (UM)')
-    plt.plot(model_scores, label="Model", c="darkorange")
-    plt.ylabel('NSE')
-    plt.xlabel('Node')
+    plt.plot(dummy_scores, '-o', label="Dummy", c='green', ms=3)
+    plt.title('Dummy', fontsize=18)
+    plt.ylabel('R2', fontsize=16)
+    plt.xlabel('Node', fontsize=16)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.gcf().set_tight_layout(True)
     plt.show()
+    plt.close()
+    plt.plot(model_scores, '-o', label="Model", c='darkorange', ms=3)
+    plt.title('Model (UM)', fontsize=18)
+    plt.ylabel('R2', fontsize=16)
+    plt.xlabel('Node', fontsize=16)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.gcf().set_tight_layout(True)
+    plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -76,7 +88,7 @@ if __name__ == "__main__":
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
-    model_path = '../main_unrolling/experiments/unrolling_WDN0350/FOS_pump_2/UnrollingModel/model.pickle'
+    model_path = '../main_unrolling/experiments/unrolling_WDN0373/EPANET Net 3/UnrollingModel/model.pickle'
     with open(model_path, 'rb') as handle:
         model = torch.load(handle)
         model.eval()
