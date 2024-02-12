@@ -1,10 +1,11 @@
 import torch
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
-from main_unrolling.training.models import Dummy
+from training.models import Dummy
 from training.test import testing_plain
-from utils import load_raw_dataset
+from utils.load import load_raw_dataset
 from tune_train import prepare_training, default_configuration
 
 def metrics(real, pred, dummy):
@@ -69,7 +70,8 @@ if __name__ == "__main__":
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
-    model_path = 'experiments/unrolling_WDN0120/FOS_pump_sched_flow/UnrollingModel/model.pickle'
+    model_path = 'experiments/unrolling_WDN0373/EPANET Net 3/UnrollingModel/model.pickle'
+
     with open(model_path, 'rb') as handle:
         model = torch.load(handle)
         model.eval()
@@ -102,29 +104,31 @@ if __name__ == "__main__":
     dummy = Dummy(junctions + tanks).evaluate(real)
     # Array below is created to ensure proper indexing of the nodes when displaying
     type_array = (tst_database[0].node_type == 0) | (tst_database[0].node_type == 2)
-
-    for i in [0, 1, 6, 26, 36]:
+    mpl.rcParams["font.size"] = 14
+    for i in [0, 6, 26, 37, 106]:
         plt.plot(real[0:100, i], label="Real")
         plt.plot(pred[0:100, i], label="Predicted")
-        plt.plot(dummy[0:100, i], label="Dummy")
+        # if i in [1, 6]:
+        # plt.plot(dummy[0:100, i], label="Dummy")
         plt.ylabel('Head')
-        plt.xlabel('Timestep')
+        plt.xlabel('Hour')
 
         plt.legend()
-        names = {0: 'Next to Reservoir', 1: 'Random Node', 6: 'Next to Tank', 26: 'Random Node', 36: 'Tank', 37: 'Pump'}
-        plt.title(names[i])
+        names = {0: 'Tank', 1: 'Tank', 2: 'Tank', 6: 'Random Node', 26: 'Random Node', 36: 'Random Node', 37: 'Random Node', 106: 'Random Node'}
+        plt.title(names[i] + ' - ' + str(i + 1))
         # save_response_graphs_in_ML_tracker(real, pred, names[i], i)
+        plt.gcf().set_tight_layout(True)
         plt.show()
         plt.close()
 
-    plt.plot(real[0:100, 37], label="Real")
-    plt.plot(pred[0:100, 37], label="Predicted")
-    plt.plot(dummy[0:100, 37], label="Dummy")
+    plt.plot(real[0:100, len(real[0]) - 2], label="Real")
+    plt.plot(pred[0:100, len(real[0]) - 2], label="Predicted")
+    # plt.plot(dummy[0:100, len(real[0]) - 1], label="Dummy")
     plt.ylabel('LPS')
     plt.xlabel('Timestep')
-
+    plt.gcf().set_tight_layout(True)
     plt.legend()
-    plt.title(names[37])
+    plt.title("Pump - " + str(len(real[0]) - 2))
     plt.show()
     plt.close()
 
