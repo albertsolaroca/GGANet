@@ -8,7 +8,7 @@ from training.test import testing_plain
 from utils.load import load_raw_dataset
 from tune_train import prepare_training, default_configuration
 
-def metrics(real, pred, dummy):
+def metrics(real, pred):
     def nse(observed, simulated):
         """
         Calculate Nash-Sutcliffe Efficiency (NSE) for 2D tensors.
@@ -28,34 +28,11 @@ def metrics(real, pred, dummy):
         nse = 1 - (numerator / denominator)
         return nse.item()
 
-    dummy_score = r2_score(real, dummy, multioutput='variance_weighted')
-    model_score = r2_score(real, pred, multioutput='variance_weighted')
-    print("R2-values \n", "Dummy:", dummy_score, "\n Model", model_score)
 
-    dummy_score = mean_absolute_error(real, dummy)
-    model_score = mean_absolute_error(real, pred)
-    print("MAE-values \n", "Dummy:", dummy_score, "\n Model", model_score)
-
-    dummy_score = mean_squared_error(real, dummy)
-    model_score = mean_squared_error(real, pred)
-    print("MSE-values \n", "Dummy:", dummy_score, "\n Model", model_score)
-
-    dummy_score = mean_squared_error(real, dummy, squared=False)
-    model_score = mean_squared_error(real, pred, squared=False)
-    print("RMSE-values \n", "Dummy:", dummy_score, "\n Model", model_score)
-
-    dummy_score = nse(real, dummy)
-    model_score = nse(real, pred)
-    print("NSE-values General\n", "Dummy:", dummy_score, "\n Model", model_score)
-
-    dummy_scores = []
     model_scores = []
     for i in range(36):
-        dummy_score = nse(real[:, i], dummy[:, i])
         model_score = nse(real[:, i], pred[:, i])
-        dummy_scores.append(dummy_score)
         model_scores.append(model_score)
-        print("NSE-values for node", i, "\n", "Dummy:", dummy_score, "\n Model", model_score)
 
 
 if __name__ == "__main__":
@@ -66,7 +43,7 @@ if __name__ == "__main__":
     default_config = default_configuration()
 
     datasets_MLP, gn, indices, junctions, tanks, output_nodes, names = prepare_training(
-        default_config.network, default_config.samples)
+        default_config.network, 20)
     # retrieve wntr data
     tra_database, val_database, tst_database = load_raw_dataset(default_config.network, data_folder)
 
@@ -104,32 +81,27 @@ if __name__ == "__main__":
     dummy = Dummy(junctions + tanks).evaluate(real)
     # Array below is created to ensure proper indexing of the nodes when displaying
     type_array = (tst_database[0].node_type == 0) | (tst_database[0].node_type == 2)
-    mpl.rcParams["font.size"] = 14
+    mpl.rcParams["font.size"] = 16
     for i in [0, 6, 26, 37, 106]:
         plt.plot(real[0:100, i], label="Real")
         plt.plot(pred[0:100, i], label="Predicted")
-        # if i in [1, 6]:
-        # plt.plot(dummy[0:100, i], label="Dummy")
+
         plt.ylabel('Head')
         plt.xlabel('Hour')
 
         plt.legend()
         names = {0: 'Tank', 1: 'Tank', 2: 'Tank', 6: 'Random Node', 26: 'Random Node', 36: 'Random Node', 37: 'Random Node', 106: 'Random Node'}
-        plt.title(names[i] + ' - ' + str(i + 1))
-        # save_response_graphs_in_ML_tracker(real, pred, names[i], i)
         plt.gcf().set_tight_layout(True)
-        plt.show()
+        plt.savefig('C:/Users/nmert/OneDrive/Pictures/Thesis/EpanetNet3/script/' + names[i] + ' - ' + str(i + 1))
         plt.close()
 
     plt.plot(real[0:100, len(real[0]) - 2], label="Real")
     plt.plot(pred[0:100, len(real[0]) - 2], label="Predicted")
-    # plt.plot(dummy[0:100, len(real[0]) - 1], label="Dummy")
     plt.ylabel('LPS')
     plt.xlabel('Timestep')
     plt.gcf().set_tight_layout(True)
     plt.legend()
-    plt.title("Pump - " + str(len(real[0]) - 2))
-    plt.show()
+    plt.savefig('C:/Users/nmert/OneDrive/Pictures/Thesis/EpanetNet3/script/' + "Pump - " + str(len(real[0]) - 2))
     plt.close()
 
-    metrics(real, pred, dummy)
+    metrics(real, pred)
