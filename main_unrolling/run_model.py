@@ -56,24 +56,6 @@ if __name__ == "__main__":
     tst_loader = torch.utils.data.DataLoader(datasets_MLP[2],
                                              batch_size=default_config.batch_size, shuffle=False, pin_memory=True)
 
-    # input = tra_dataset_MLP[0][0].unsqueeze(0).to(device)
-    # print(input.shape)
-    #
-    # start_time = time.time_ns()
-    # print(start_time)
-    # for batch in tst_loader:
-    #     input = batch[0].to(device)
-    #     output = model(input)
-    #
-    # end_time = time.time_ns()
-    # print(end_time)
-    #
-    # print(f"Simulation time: {end_time - start_time}")
-    #
-    # output = output.detach().cpu().numpy()
-    # output = gn.inverse_transform_array(output, 'pressure')
-    # print(output)
-
     pred, real, elapsed_time = testing_plain(model, tst_loader)
     print("TIME TAKEN: ", elapsed_time)
     pred = gn.denormalize_multiple(pred, output_nodes)
