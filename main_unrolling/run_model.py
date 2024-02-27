@@ -34,6 +34,14 @@ def metrics(real, pred):
         model_score = nse(real[:, i], pred[:, i])
         model_scores.append(model_score)
 
+    plt.plot(model_scores, '-o', label="Model", c='darkorange', ms=2)
+    plt.ylabel('R2', fontsize=16)
+    plt.xlabel('Node', fontsize=16)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.gcf().set_tight_layout(True)
+    plt.savefig('C:/Users/nmert/OneDrive/Pictures/Thesis/EPANET Net 3/script/' + "ModelR2")
+    plt.close()
 
 if __name__ == "__main__":
 
@@ -65,11 +73,11 @@ if __name__ == "__main__":
     type_array = (tst_database[0].node_type == 0) | (tst_database[0].node_type == 2)
     mpl.rcParams["font.size"] = 16
     for i in [0, 6, 26, 37, 106]:
-        plt.plot(real[0:100, i], label="Real")
-        plt.plot(pred[0:100, i], label="Predicted")
+        plt.plot(real[0:100, i], label="Real", linewidth=2.5)
+        plt.plot(pred[0:100, i], label="Predicted", linewidth=2.5)
 
         plt.ylabel('Head')
-        plt.xlabel('Hour')
+        plt.xlabel('Timestep')
 
         plt.legend()
         names = {0: 'Tank', 1: 'Tank', 2: 'Tank', 6: 'Random Node', 26: 'Random Node', 36: 'Random Node', 37: 'Random Node', 106: 'Random Node'}
@@ -77,8 +85,8 @@ if __name__ == "__main__":
         plt.savefig('C:/Users/nmert/OneDrive/Pictures/Thesis/EpanetNet3/script/' + names[i] + ' - ' + str(i + 1))
         plt.close()
 
-    plt.plot(real[0:100, len(real[0]) - 2], label="Real")
-    plt.plot(pred[0:100, len(real[0]) - 2], label="Predicted")
+    plt.plot(real[0:100, len(real[0]) - 2], label="Real", linewidth=2.5)
+    plt.plot(pred[0:100, len(real[0]) - 2], label="Predicted", linewidth=2.5)
     plt.ylabel('LPS')
     plt.xlabel('Timestep')
     plt.gcf().set_tight_layout(True)
