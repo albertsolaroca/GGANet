@@ -30,7 +30,7 @@ def metrics(real, pred):
 
 
     model_scores = []
-    for i in range(36):
+    for i in range(len(real[0])):
         model_score = nse(real[:, i], pred[:, i])
         model_scores.append(model_score)
 
@@ -40,7 +40,7 @@ def metrics(real, pred):
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.gcf().set_tight_layout(True)
-    plt.savefig('C:/Users/nmert/OneDrive/Pictures/Thesis/EPANET Net 3/script/' + "ModelR2")
+    plt.savefig('C:/Users/nmert/OneDrive/Pictures/Thesis/EpanetNet3/script/' + "ModelR2")
     plt.close()
 
 if __name__ == "__main__":
