@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
         plt.ylabel('Head')
         plt.xlabel('Timestep')
-
+        plt.ylim(25, 50)
         plt.legend()
         names = {0: 'Random Node', 54: 'Random Node', 116: 'Random Node', 235: 'Random Node', 387: 'Random Node', 110: 'Random Node', 482: 'Tank'}
         plt.gcf().set_tight_layout(True)
@@ -89,6 +89,7 @@ if __name__ == "__main__":
 
     plt.plot(real[0:100, len(real[0]) - 2], label="Real", linewidth=2.5)
     plt.plot(pred[0:100, len(real[0]) - 2], label="Predicted", linewidth=2.5)
+    plt.ylim(25, 50)
     plt.ylabel('Head')
     plt.xlabel('Timestep')
     plt.gcf().set_tight_layout(True)
