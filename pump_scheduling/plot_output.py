@@ -44,8 +44,8 @@ if __name__ == '__main__':
         energy_mm += list(total_energy_mm.values)
 
     plt.gcf().set_tight_layout(True)
-    plt.plot(gen_range, avg_energy, '-o', label='EPANET', ms=6, linewidth=2.5)
-    plt.plot(gen_range, avg_energy_mm, '-o', label='Metamodel', ms=6, linewidth=2.5)
+    plt.plot(gen_range, avg_energy, '-o', label='EPANET', ms=8, linewidth=2.5, linestyle='dashed')
+    plt.plot(gen_range, avg_energy_mm, '-o', label='Metamodel', ms=8, linewidth=2.5, linestyle='dashed')
     plt.xlabel('Generations', fontsize=18)
     plt.ylabel('kWh', fontsize=18)
     plt.yticks(fontsize=16)
@@ -54,8 +54,8 @@ if __name__ == '__main__':
     plt.show()
 
     plt.gcf().set_tight_layout(True)
-    plt.plot(gen_range, avg_cost, '-o', label='EPANET', ms=6, linewidth=2.5)
-    plt.plot(gen_range, avg_cost_mm, '-o', label='Metamodel', ms=6, linewidth=2.5)
+    plt.plot(gen_range, avg_cost, '-o', label='EPANET', ms=8, linewidth=2.5, linestyle='dashed')
+    plt.plot(gen_range, avg_cost_mm, '-o', label='Metamodel', ms=8, linewidth=2.5, linestyle='dashed')
     plt.xlabel('Generations', fontsize=18)
     plt.ylabel('€', fontsize=18)
     plt.yticks(fontsize=16)
