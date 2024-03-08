@@ -102,7 +102,7 @@ if __name__ == '__main__':
     # Add legend
     handles, labels = ax.get_legend_handles_labels()
     if handles:
-        ax.legend(handles, labels, loc='lower right')
+        ax.legend(handles, labels, loc='lower right', fontsize=13)
     ax.xaxis.set_major_locator(ticker.NullLocator())
     ax.yaxis.set_major_locator(ticker.NullLocator())
     # Optionally, add titles or labels
